@@ -36,7 +36,7 @@ defmodule RRPproxy.Mixfile do
 
   defp package do
     [
-      name:         "rppproxy",
+      name:         "rrpproxy",
       maintainers:  ["Franz Bettag"],
       licenses:     ["MIT"],
       links:        %{"GitHub" => @project_url}
