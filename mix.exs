@@ -1,7 +1,7 @@
 defmodule RRPproxy.Mixfile do
   use Mix.Project
 
-  @project_url "https://github.com/fbettag/rrpproxy"
+  @project_url "https://github.com/fbettag/rrpproxy.ex"
 
   def project do
     [
