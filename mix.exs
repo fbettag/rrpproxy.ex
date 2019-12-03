@@ -27,7 +27,7 @@ defmodule RRPproxy.Mixfile do
   defp deps do
     [
       {:poison,       "~> 4.0.1"},
-      {:httpoison,    "~> 1.6", override: true},
+      {:httpoison,    "~> 1.6"},
       {:ecto,         "~> 3.0"},
       {:ex_doc,       "~> 0.19", only: :dev},
       {:credo,        github: "rrrene/credo", only: [:dev, :test]},
