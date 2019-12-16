@@ -65,6 +65,10 @@ defmodule RRPproxy.Client do
     {:error, reason}
   end
 
+  defp response_to_map({:ok, %{status_code: 500}} = {_, %HTTPoison.Response{}}) do
+    {:error, %{code: 500}}
+  end
+
   defp response_to_map({code, %{body: body}} = {_, %HTTPoison.Response{}}, is_multi_line_response \\ false) do
     parts = String.split(body, "\n")
            |> Enum.filter(&String.contains?(&1, "="))
@@ -116,6 +120,7 @@ defmodule RRPproxy.Client do
       {:error, :timeout} = error -> retry_func.(error)
       {:error, %{code: 421}} = error -> retry_func.(error)
       {:error, %{code: 423}} = error -> retry_func.(error)
+      {:error, %{code: 500}} = error -> retry_func.(error)
       other -> other
     end
   end
