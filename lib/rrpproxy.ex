@@ -532,8 +532,8 @@ defmodule RRPproxy do
   get_zone_info returns zone information for the given zone.
 
   """
-  def get_zone_info(zone, creds = %Client{} \\ %Client{}) do
-    params = [zone: zone]
+  def get_zone_info(domain, creds = %Client{} \\ %Client{}) do
+    params = [domain: domain]
     with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZoneInfo", params, creds, true)
     do
       {:ok, data}
