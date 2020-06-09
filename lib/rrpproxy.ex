@@ -23,8 +23,7 @@ defmodule RRPproxy do
 
   """
   def status_account(creds = %Client{} \\ %Client{}) do
-    with {:ok, %{code: 200, data: [status]}} <- Client.query("StatusAccount", [], creds)
-    do
+    with {:ok, %{code: 200, data: [status]}} <- Client.query("StatusAccount", [], creds) do
       {:ok, status}
     end
   end
@@ -34,8 +33,7 @@ defmodule RRPproxy do
 
   """
   def status_registrar(creds = %Client{} \\ %Client{}) do
-    with {:ok, %{code: 200, data: statuses}} <- Client.query("StatusRegistrar", [], creds)
-    do
+    with {:ok, %{code: 200, data: statuses}} <- Client.query("StatusRegistrar", [], creds) do
       {:ok, Enum.find(statuses, fn status -> Map.has_key?(status, :language) end)}
     end
   end
@@ -46,8 +44,8 @@ defmodule RRPproxy do
   """
   def modify_registrar(registrar, creds = %Client{} \\ %Client{}) do
     params = Enum.reduce(registrar, [], fn {k, v}, l -> l ++ ["#{k}": v] end)
-    with {:ok, _} <- Client.query("ModifyRegistrar", params, creds)
-    do
+
+    with {:ok, _} <- Client.query("ModifyRegistrar", params, creds) do
       :ok
     end
   end
@@ -58,8 +56,9 @@ defmodule RRPproxy do
   """
   def query_appendix_list(offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: appendices, info: info}} <- Client.query("QueryAppendixList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: appendices, info: info}} <-
+           Client.query("QueryAppendixList", params, creds) do
       {:ok, appendices, info}
     end
   end
@@ -68,11 +67,22 @@ defmodule RRPproxy do
   activate_appendix activates an appendix.
 
   """
-  def activate_appendix(appendix, accept_terms_and_conditions \\ true, creds = %Client{} \\ %Client{}) do
-    accept_tac = if accept_terms_and_conditions do 1 else 0 end
+  def activate_appendix(
+        appendix,
+        accept_terms_and_conditions \\ true,
+        creds = %Client{} \\ %Client{}
+      ) do
+    accept_tac =
+      if accept_terms_and_conditions do
+        1
+      else
+        0
+      end
+
     params = [appendix: appendix, "X-ACCEPT-TAC": accept_tac]
-    with {:ok, %{code: 200, data: %{"0": %{email: "successful"}}}} <- Client.query("ActivateAppendix", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: %{"0": %{email: "successful"}}}} <-
+           Client.query("ActivateAppendix", params, creds) do
       :ok
     end
   end
@@ -85,8 +95,9 @@ defmodule RRPproxy do
   """
   def query_contact_list(offset \\ 0, limit \\ 100, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: contacts, info: info}} <- Client.query("QueryContactList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: contacts, info: info}} <-
+           Client.query("QueryContactList", params, creds) do
       {:ok, Enum.map(contacts, fn contact -> contact.contact end), info}
     end
   end
@@ -108,12 +119,27 @@ defmodule RRPproxy do
 
   """
   def add_contact(contact, validation \\ true, pre_verify \\ true, creds = %Client{} \\ %Client{}) do
-    params = Enum.reduce(contact, [], fn {k, v}, l -> l ++ ["#{k}": v] end)
-             ++ [validation: if validation do 1 else 0 end]
-             ++ [pre_verify: if pre_verify do 1 else 0 end]
-             ++ [autodelete: 1]
-    with {:ok, %{code: 200, data: [contact]}} <- Client.query("AddContact", params, creds)
-    do
+    params =
+      Enum.reduce(contact, [], fn {k, v}, l -> l ++ ["#{k}": v] end) ++
+        [
+          validation:
+            if validation do
+              1
+            else
+              0
+            end
+        ] ++
+        [
+          pre_verify:
+            if pre_verify do
+              1
+            else
+              0
+            end
+        ] ++
+        [autodelete: 1]
+
+    with {:ok, %{code: 200, data: [contact]}} <- Client.query("AddContact", params, creds) do
       {:ok, contact}
     end
   end
@@ -122,13 +148,41 @@ defmodule RRPproxy do
   modify_contact modifies an existing contact and returns a contact handle.
 
   """
-  def modify_contact(contact, validation \\ true, pre_verify \\ false, check_only \\ true, creds = %Client{} \\ %Client{}) do
-    params = Enum.reduce(contact, [], fn {k, v}, l -> l ++ ["#{k}": v] end)
-             ++ [validation: if validation do 1 else 0 end]
-             ++ [preverify: if pre_verify do 1 else 0 end]
-             ++ [checkonly: if check_only do 1 else 0 end]
-    with {:ok, %{code: 200, data: [contact]}} <- Client.query("ModifyContact", params, creds)
-    do
+  def modify_contact(
+        contact,
+        validation \\ true,
+        pre_verify \\ false,
+        check_only \\ true,
+        creds = %Client{} \\ %Client{}
+      ) do
+    params =
+      Enum.reduce(contact, [], fn {k, v}, l -> l ++ ["#{k}": v] end) ++
+        [
+          validation:
+            if validation do
+              1
+            else
+              0
+            end
+        ] ++
+        [
+          preverify:
+            if pre_verify do
+              1
+            else
+              0
+            end
+        ] ++
+        [
+          checkonly:
+            if check_only do
+              1
+            else
+              0
+            end
+        ]
+
+    with {:ok, %{code: 200, data: [contact]}} <- Client.query("ModifyContact", params, creds) do
       {:ok, contact}
     end
   end
@@ -138,8 +192,7 @@ defmodule RRPproxy do
 
   """
   def delete_contact(contact, creds = %Client{} \\ %Client{}) do
-    with {:ok, %{code: 200}} <- Client.query("DeleteContact", [contact: contact], creds)
-    do
+    with {:ok, %{code: 200}} <- Client.query("DeleteContact", [contact: contact], creds) do
       :ok
     end
   end
@@ -149,8 +202,8 @@ defmodule RRPproxy do
 
   """
   def clone_contact(contact, creds = %Client{} \\ %Client{}) do
-    with {:ok, %{code: 200, data: [contact]}} <- Client.query("CloneContact", [contact: contact], creds)
-    do
+    with {:ok, %{code: 200, data: [contact]}} <-
+           Client.query("CloneContact", [contact: contact], creds) do
       {:ok, contact}
     end
   end
@@ -160,8 +213,7 @@ defmodule RRPproxy do
 
   """
   def restore_contact(contact, creds = %Client{} \\ %Client{}) do
-    with {:ok, %{code: 200}} <- Client.query("RestoreContact", [contact: contact], creds)
-    do
+    with {:ok, %{code: 200}} <- Client.query("RestoreContact", [contact: contact], creds) do
       :ok
     end
   end
@@ -172,8 +224,8 @@ defmodule RRPproxy do
   """
   def request_token(people_contact_or_domain, creds = %Client{} \\ %Client{}) do
     params = [contact: people_contact_or_domain, type: "ContactDisclosure"]
-    with {:ok, %{code: 200}} <- Client.query("RequestToken", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("RequestToken", params, creds) do
       :ok
     end
   end
@@ -186,8 +238,8 @@ defmodule RRPproxy do
   """
   def delete_event(event, creds = %Client{} \\ %Client{}) do
     params = [event: event]
-    with {:ok, %{code: 200}} <- Client.query("DeleteEvent", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("DeleteEvent", params, creds) do
       :ok
     end
   end
@@ -198,8 +250,8 @@ defmodule RRPproxy do
   """
   def status_event(event, creds = %Client{} \\ %Client{}) do
     params = [event: event]
-    with {:ok, %{code: 200, data: [event]}} <- Client.query("StatusEvent", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [event]}} <- Client.query("StatusEvent", params, creds) do
       {:ok, event}
     end
   end
@@ -210,12 +262,19 @@ defmodule RRPproxy do
   """
   def query_event_list(offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: events, info: info}} <- Client.query("QueryEventList", params, creds)
-    do
-      {:ok, Enum.flat_map(events, fn v ->
-        e = Map.get(v, :event, [])
-        if is_list(e) do e else [e] end
-      end), info}
+
+    with {:ok, %{code: 200, data: events, info: info}} <-
+           Client.query("QueryEventList", params, creds) do
+      {:ok,
+       Enum.flat_map(events, fn v ->
+         e = Map.get(v, :event, [])
+
+         if is_list(e) do
+           e
+         else
+           [e]
+         end
+       end), info}
     end
   end
 
@@ -227,8 +286,8 @@ defmodule RRPproxy do
   """
   def add_tag(tag, description \\ "", type \\ "domain", creds = %Client{} \\ %Client{}) do
     params = [tag: tag, type: type, description: description]
-    with {:ok, %{code: 200}} <- Client.query("AddTag", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("AddTag", params, creds) do
       :ok
     end
   end
@@ -237,11 +296,23 @@ defmodule RRPproxy do
   modify_tag modifies tags by the given tag name for domains and zones.
 
   """
-  def modify_tag(tag, newtag \\ "", description \\ "", type \\ "domain", creds = %Client{} \\ %Client{}) do
-    newtag = if newtag == "" do tag else newtag end
+  def modify_tag(
+        tag,
+        newtag \\ "",
+        description \\ "",
+        type \\ "domain",
+        creds = %Client{} \\ %Client{}
+      ) do
+    newtag =
+      if newtag == "" do
+        tag
+      else
+        newtag
+      end
+
     params = [tag: tag, newtag: newtag, type: type, description: description]
-    with {:ok, %{code: 200}} <- Client.query("ModifyTag", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("ModifyTag", params, creds) do
       :ok
     end
   end
@@ -252,8 +323,8 @@ defmodule RRPproxy do
   """
   def delete_tag(tag, type \\ "domain", creds = %Client{} \\ %Client{}) do
     params = [tag: tag, type: type]
-    with {:ok, %{code: 200}} <- Client.query("DeleteTag", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("DeleteTag", params, creds) do
       :ok
     end
   end
@@ -264,8 +335,8 @@ defmodule RRPproxy do
   """
   def status_tag(tag, type \\ "domain", creds = %Client{} \\ %Client{}) do
     params = [tag: tag, type: type]
-    with {:ok, %{code: 200, data: [tag]}} <- Client.query("StatusTag", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [tag]}} <- Client.query("StatusTag", params, creds) do
       {:ok, tag}
     end
   end
@@ -276,12 +347,19 @@ defmodule RRPproxy do
   """
   def query_tag_list(type \\ "domain", offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit, type: type]
-    with {:ok, %{code: 200, data: tags, info: info}} <- Client.query("QueryTagList", params, creds)
-    do
-      {:ok, Enum.flat_map(tags, fn v ->
-        e = Map.get(v, :tag, [])
-        if is_list(e) do e else [e] end
-      end), info}
+
+    with {:ok, %{code: 200, data: tags, info: info}} <-
+           Client.query("QueryTagList", params, creds) do
+      {:ok,
+       Enum.flat_map(tags, fn v ->
+         e = Map.get(v, :tag, [])
+
+         if is_list(e) do
+           e
+         else
+           [e]
+         end
+       end), info}
     end
   end
 
@@ -292,9 +370,11 @@ defmodule RRPproxy do
 
   """
   def add_nameserver(nameserver, ips, creds = %Client{} \\ %Client{}) do
-    params = [nameserver: nameserver] ++ Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
-    with {:ok, %{code: 200}} <- Client.query("AddNameserver", params, creds)
-    do
+    params =
+      [nameserver: nameserver] ++
+        Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
+
+    with {:ok, %{code: 200}} <- Client.query("AddNameserver", params, creds) do
       :ok
     end
   end
@@ -304,9 +384,11 @@ defmodule RRPproxy do
 
   """
   def modify_nameserver(nameserver, ips, creds = %Client{} \\ %Client{}) do
-    params = [nameserver: nameserver] ++ Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
-    with {:ok, %{code: 200}} <- Client.query("ModifyNameserver", params, creds)
-    do
+    params =
+      [nameserver: nameserver] ++
+        Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
+
+    with {:ok, %{code: 200}} <- Client.query("ModifyNameserver", params, creds) do
       :ok
     end
   end
@@ -317,8 +399,8 @@ defmodule RRPproxy do
   """
   def delete_nameserver(nameserver, creds = %Client{} \\ %Client{}) do
     params = [nameserver: nameserver]
-    with {:ok, %{code: 200}} <- Client.query("DeleteNameserver", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("DeleteNameserver", params, creds) do
       :ok
     end
   end
@@ -329,8 +411,8 @@ defmodule RRPproxy do
   """
   def check_nameserver(nameserver, creds = %Client{} \\ %Client{}) do
     params = [nameserver: nameserver]
-    with {:ok, %{code: 200}} <- Client.query("CheckNameserver", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("CheckNameserver", params, creds) do
       :ok
     end
   end
@@ -341,8 +423,9 @@ defmodule RRPproxy do
   """
   def status_nameserver(nameserver, creds = %Client{} \\ %Client{}) do
     params = [nameserver: nameserver]
-    with {:ok, %{code: 200, data: [nameserver]}} <- Client.query("StatusNameserver", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [nameserver]}} <-
+           Client.query("StatusNameserver", params, creds) do
       {:ok, nameserver}
     end
   end
@@ -353,8 +436,9 @@ defmodule RRPproxy do
   """
   def query_nameserver_list(offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: nameservers, info: info}} <- Client.query("QueryNameserverList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: nameservers, info: info}} <-
+           Client.query("QueryNameserverList", params, creds) do
       {:ok, Enum.map(nameservers, fn ns -> ns.nameserver end), info}
     end
   end
@@ -367,8 +451,9 @@ defmodule RRPproxy do
   """
   def query_domain_list(offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: domains, info: info}} <- Client.query("QueryDomainList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: domains, info: info}} <-
+           Client.query("QueryDomainList", params, creds) do
       {:ok, Enum.map(domains, fn v -> v.domain end), info}
     end
   end
@@ -379,6 +464,7 @@ defmodule RRPproxy do
   """
   def check_domain(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
+
     case Client.query("CheckDomain", params, creds) do
       {:ok, %{code: 210}} -> {:ok, true}
       {:ok, %{code: 211}} -> {:ok, false}
@@ -392,8 +478,9 @@ defmodule RRPproxy do
   """
   def status_domain(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200, data: [domain]}} <- Client.query("StatusDomain", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [domain]}} <-
+           Client.query("StatusDomain", params, creds, false, true) do
       {:ok, domain}
     end
   end
@@ -402,12 +489,28 @@ defmodule RRPproxy do
   add_domain registers a new domain.
 
   """
-  def add_domain(domain, owner, admin, tech, bill, nameservers \\ [], period \\ "1", creds = %Client{} \\ %Client{}) do
-    params = [domain: domain, period: period,
-              ownercontact0: owner, admincontact0: admin, techcontact0: tech, billingcontact0: bill] ++
-      Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("AddDomain", params, creds)
-    do
+  def add_domain(
+        domain,
+        owner,
+        admin,
+        tech,
+        bill,
+        nameservers \\ [],
+        period \\ "1",
+        creds = %Client{} \\ %Client{}
+      ) do
+    params =
+      [
+        domain: domain,
+        period: period,
+        ownercontact0: owner,
+        admincontact0: admin,
+        techcontact0: tech,
+        billingcontact0: bill
+      ] ++
+        Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("AddDomain", params, creds) do
       {:ok, data}
     end
   end
@@ -418,8 +521,8 @@ defmodule RRPproxy do
   """
   def modify_domain(domain, attrs \\ [], creds = %Client{} \\ %Client{}) do
     params = [domain: domain] ++ fix_attrs(attrs)
-    with {:ok, %{code: 200}} <- Client.query("ModifyDomain", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("ModifyDomain", params, creds) do
       :ok
     end
   end
@@ -430,8 +533,8 @@ defmodule RRPproxy do
   """
   def delete_domain(domain, action \\ "instant", creds = %Client{} \\ %Client{}) do
     params = [domain: domain, action: String.upcase(action)]
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("DeleteDomain", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("DeleteDomain", params, creds) do
       {:ok, data}
     end
   end
@@ -442,8 +545,8 @@ defmodule RRPproxy do
   """
   def renew_domain(domain, years \\ 1, creds = %Client{} \\ %Client{}) do
     params = [domain: domain, period: years]
-    with {:ok, %{code: 200}} <- Client.query("RenewDomain", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("RenewDomain", params, creds) do
       :ok
     end
   end
@@ -453,10 +556,15 @@ defmodule RRPproxy do
 
   """
   def set_domain_auth_code(domain, code, creds = %Client{} \\ %Client{}) do
-    params = [domain: domain, auth: code, type: 1] ++
-      if code == "" do [action: "delete"] else [action: "set"] end
-    with {:ok, %{code: 200}} <- Client.query("SetAuthcode", params, creds)
-    do
+    params =
+      [domain: domain, auth: code, type: 1] ++
+        if code == "" do
+          [action: "delete"]
+        else
+          [action: "set"]
+        end
+
+    with {:ok, %{code: 200}} <- Client.query("SetAuthcode", params, creds) do
       :ok
     end
   end
@@ -469,11 +577,21 @@ defmodule RRPproxy do
   The domains mode for renewals (only valid for the zone nl, optional): DEFAULT | AUTORENEW | AUTOEXPIRE | AUTODELETE | RENEWONCE | AUTORENEWQUARTERLY
   The domains mode for renewals (only valid for the zones com, net, org, info, biz, tv, mobi and me, optional): DEFAULT | AUTORENEW | AUTOEXPIRE | AUTODELETE | RENEWONCE | EXPIREAUCTION
   """
-  def set_domain_renewal_mode(domain, mode \\ "default", token \\ "", creds = %Client{} \\ %Client{}) do
-    params = [domain: domain, renewalmode: mode] ++
-      if token == "" do [] else [token: token] end
-    with {:ok, %{code: 200}} <- Client.query("SetDomainRenewalMode", params, creds)
-    do
+  def set_domain_renewal_mode(
+        domain,
+        mode \\ "default",
+        token \\ "",
+        creds = %Client{} \\ %Client{}
+      ) do
+    params =
+      [domain: domain, renewalmode: mode] ++
+        if token == "" do
+          []
+        else
+          [token: token]
+        end
+
+    with {:ok, %{code: 200}} <- Client.query("SetDomainRenewalMode", params, creds) do
       :ok
     end
   end
@@ -483,11 +601,21 @@ defmodule RRPproxy do
 
   The domains mode for transfers: DEFAULT|AUTOAPPROVE|AUTODENY
   """
-  def set_domain_transfer_mode(domain, mode \\ "default", token \\ "", creds = %Client{} \\ %Client{}) do
-    params = [domain: domain, transfermode: mode] ++
-      if token == "" do [] else [token: token] end
-    with {:ok, %{code: 200}} <- Client.query("SetDomainTransferMode", params, creds)
-    do
+  def set_domain_transfer_mode(
+        domain,
+        mode \\ "default",
+        token \\ "",
+        creds = %Client{} \\ %Client{}
+      ) do
+    params =
+      [domain: domain, transfermode: mode] ++
+        if token == "" do
+          []
+        else
+          [token: token]
+        end
+
+    with {:ok, %{code: 200}} <- Client.query("SetDomainTransferMode", params, creds) do
       :ok
     end
   end
@@ -498,8 +626,8 @@ defmodule RRPproxy do
   """
   def restore_domain(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200}} <- Client.query("RestoreDomain", params, creds)
-    do
+
+    with {:ok, %{code: 200}} <- Client.query("RestoreDomain", params, creds) do
       :ok
     end
   end
@@ -510,8 +638,8 @@ defmodule RRPproxy do
   """
   def status_owner_change(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusOwnerChange", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusOwnerChange", params, creds) do
       {:ok, data}
     end
   end
@@ -522,8 +650,8 @@ defmodule RRPproxy do
   """
   def get_zone(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZone", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZone", params, creds) do
       {:ok, data.zone}
     end
   end
@@ -534,8 +662,8 @@ defmodule RRPproxy do
   """
   def get_zone_info(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZoneInfo", params, creds, true)
-    do
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZoneInfo", params, creds, true) do
       {:ok, data}
     end
   end
@@ -546,17 +674,56 @@ defmodule RRPproxy do
   transfer_domain transfers a foreign domain into our account.
 
   """
-  def transfer_domain(domain, action \\ "request", auth \\ "", owner \\ "", admin \\ "", tech \\ "", bill \\ "", nameservers \\ [], period \\ "1", creds = %Client{} \\ %Client{}) do
-    period = if action == "request"do [period: period] else [] end
-    params = [domain: domain, action: action] ++ period ++
-      if auth == "" do [] else [auth: auth] end ++
-      if owner == "" do [] else [ownercontact0: owner] end ++
-      if admin == "" do [] else [admincontact0: admin] end ++
-      if tech == "" do [] else [techcontact0: tech] end ++
-      if bill == "" do [] else [billingcontact0: bill] end ++
-      Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
-    with {:ok, %{code: 200}} <- Client.query("TransferDomain", params, creds)
-    do
+  def transfer_domain(
+        domain,
+        action \\ "request",
+        auth \\ "",
+        owner \\ "",
+        admin \\ "",
+        tech \\ "",
+        bill \\ "",
+        nameservers \\ [],
+        period \\ "1",
+        creds = %Client{} \\ %Client{}
+      ) do
+    period =
+      if action == "request" do
+        [period: period]
+      else
+        []
+      end
+
+    params =
+      [domain: domain, action: action] ++
+        period ++
+        if auth == "" do
+          []
+        else
+          [auth: auth]
+        end ++
+        if owner == "" do
+          []
+        else
+          [ownercontact0: owner]
+        end ++
+        if admin == "" do
+          []
+        else
+          [admincontact0: admin]
+        end ++
+        if tech == "" do
+          []
+        else
+          [techcontact0: tech]
+        end ++
+        if bill == "" do
+          []
+        else
+          [billingcontact0: bill]
+        end ++
+        Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
+
+    with {:ok, %{code: 200}} <- Client.query("TransferDomain", params, creds) do
       :ok
     end
   end
@@ -567,8 +734,9 @@ defmodule RRPproxy do
   """
   def query_transfer_list(offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: data, info: info}} <- Client.query("QueryTransferList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: data, info: info}} <-
+           Client.query("QueryTransferList", params, creds) do
       {:ok, data, info}
     end
   end
@@ -579,8 +747,9 @@ defmodule RRPproxy do
   """
   def query_foreign_transfer_list(offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: data, info: info}} <- Client.query("QueryForeignTransferList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: data, info: info}} <-
+           Client.query("QueryForeignTransferList", params, creds) do
       {:ok, data, info}
     end
   end
@@ -592,8 +761,8 @@ defmodule RRPproxy do
   """
   def status_domain_transfer(domain, creds = %Client{} \\ %Client{}) do
     params = [domain: domain]
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusDomainTransfer", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusDomainTransfer", params, creds) do
       {:ok, data}
     end
   end
@@ -606,8 +775,9 @@ defmodule RRPproxy do
   """
   def query_zone_list(offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: prices, info: info}} <- Client.query("QueryZoneList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: prices, info: info}} <-
+           Client.query("QueryZoneList", params, creds) do
       {:ok, prices, info}
     end
   end
@@ -618,8 +788,9 @@ defmodule RRPproxy do
   """
   def query_accounting_list(date, offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [mindate: date, first: offset, limit: limit]
-    with {:ok, %{code: 200, data: data, info: info}} <- Client.query("QueryAccountingList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: data, info: info}} <-
+           Client.query("QueryAccountingList", params, creds) do
       {:ok, data, info}
     end
   end
@@ -630,8 +801,9 @@ defmodule RRPproxy do
   """
   def query_upcoming_accounting_list(offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: data, info: info}} <- Client.query("QueryUpcomingAccountingList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: data, info: info}} <-
+           Client.query("QueryUpcomingAccountingList", params, creds) do
       {:ok, data, info}
     end
   end
@@ -642,8 +814,8 @@ defmodule RRPproxy do
   """
   def convert_currency(amount, from, to \\ "EUR", creds = %Client{} \\ %Client{}) do
     params = [amount: amount, from: from, to: to]
-    with {:ok, %{code: 200, data: [conv]}} <- Client.query("ConvertCurrency", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: [conv]}} <- Client.query("ConvertCurrency", params, creds) do
       {:ok, conv.converted_amount, conv.rate}
     end
   end
@@ -654,8 +826,9 @@ defmodule RRPproxy do
   """
   def query_available_promotion_list(offset \\ 0, limit \\ 2000, creds = %Client{} \\ %Client{}) do
     params = [first: offset, limit: limit]
-    with {:ok, %{code: 200, data: data, info: info}} <- Client.query("QueryAvailablePromotionList", params, creds)
-    do
+
+    with {:ok, %{code: 200, data: data, info: info}} <-
+           Client.query("QueryAvailablePromotionList", params, creds) do
       {:ok, data, info}
     end
   end
