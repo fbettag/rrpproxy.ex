@@ -70,7 +70,16 @@ defmodule RRPproxyTest do
 
   # contacts
 
-  @contact %{firstname: "Max", lastname: "Mustermann", street0: "Ludwigstrasse 5", city: "Nürnberg", zip: "90402", country: "DE", phone: "+4991112345", email: "foo@bar.org"}
+  @contact %{
+    firstname: "Max",
+    lastname: "Mustermann",
+    street0: "Ludwigstrasse 5",
+    city: "Nürnberg",
+    zip: "90402",
+    country: "DE",
+    phone: "+4991112345",
+    email: "foo@bar.org"
+  }
   test "lifecycle of a people contact" do
     {ok_or_err, contact} = RRPproxy.add_contact(@contact)
     assert ok_or_err == :ok
@@ -87,9 +96,11 @@ defmodule RRPproxyTest do
     assert is_map(status_contact)
     assert String.length(status_contact.roid) > 0
 
-    update_attrs = @contact
-                   |> Map.put(:street0, "Ludwigstrasse 6")
-                   |> Map.put(:contact, contact.contact)
+    update_attrs =
+      @contact
+      |> Map.put(:street0, "Ludwigstrasse 6")
+      |> Map.put(:contact, contact.contact)
+
     {ok_or_err, updated_contact} = RRPproxy.modify_contact(update_attrs)
     assert ok_or_err == :ok
     assert is_map(updated_contact)
@@ -105,7 +116,15 @@ defmodule RRPproxyTest do
     assert RRPproxy.delete_contact(contact.contact) == :ok
   end
 
-  @contact %{organization: "ACME inc", street0: "Ludwigstrasse 1", city: "Nürnberg", zip: "90402", country: "DE", phone: "+49911234541", email: "acme@foo.org"}
+  @contact %{
+    organization: "ACME inc",
+    street0: "Ludwigstrasse 1",
+    city: "Nürnberg",
+    zip: "90402",
+    country: "DE",
+    phone: "+49911234541",
+    email: "acme@foo.org"
+  }
   test "lifecycle of an org contact" do
     {ok_or_err, contact} = RRPproxy.add_contact(@contact)
     assert ok_or_err == :ok
@@ -122,9 +141,11 @@ defmodule RRPproxyTest do
     assert is_map(status_contact)
     assert String.length(status_contact.roid) > 0
 
-    update_attrs = @contact
-                   |> Map.put(:street0, "Ludwigstrasse 2")
-                   |> Map.put(:contact, contact.contact)
+    update_attrs =
+      @contact
+      |> Map.put(:street0, "Ludwigstrasse 2")
+      |> Map.put(:contact, contact.contact)
+
     {ok_or_err, updated_contact} = RRPproxy.modify_contact(update_attrs)
     assert ok_or_err == :ok
     assert is_map(updated_contact)
@@ -142,7 +163,16 @@ defmodule RRPproxyTest do
 
   # lifecycle of a nameserver
 
-  @contact %{firstname: "John Paul", lastname: "Jones", street0: "Ludwigstrasse 5", city: "Fürth", zip: "90765", country: "DE", phone: "+4991112346", email: "foo2@bar.org"}
+  @contact %{
+    firstname: "John Paul",
+    lastname: "Jones",
+    street0: "Ludwigstrasse 5",
+    city: "Fürth",
+    zip: "90765",
+    country: "DE",
+    phone: "+4991112346",
+    email: "foo2@bar.org"
+  }
   test "lifecycle of a nameserver" do
     {ok_or_err, contact} = RRPproxy.add_contact(@contact)
     assert ok_or_err == :ok
@@ -161,7 +191,10 @@ defmodule RRPproxyTest do
 
     {ok_or_err, list, _} = RRPproxy.query_nameserver_list()
     assert ok_or_err == :ok
-    assert Enum.any?(list, fn nameserver -> String.downcase(nameserver) == "ns1." <> domainname end)
+
+    assert Enum.any?(list, fn nameserver ->
+             String.downcase(nameserver) == "ns1." <> domainname
+           end)
 
     {ok_or_err, _} = RRPproxy.check_nameserver("ns1." <> domainname)
     assert ok_or_err == :ok
@@ -172,7 +205,16 @@ defmodule RRPproxyTest do
 
   # domains
 
-  @contact %{firstname: "John Paul", lastname: "Jones", street0: "Ludwigstrasse 5", city: "Fürth", zip: "90765", country: "DE", phone: "+4991112346", email: "foo2@bar.org"}
+  @contact %{
+    firstname: "John Paul",
+    lastname: "Jones",
+    street0: "Ludwigstrasse 5",
+    city: "Fürth",
+    zip: "90765",
+    country: "DE",
+    phone: "+4991112346",
+    email: "foo2@bar.org"
+  }
   test "lifecycle of a domain" do
     {ok_or_err, contact} = RRPproxy.add_contact(@contact)
     assert ok_or_err == :ok
@@ -189,13 +231,15 @@ defmodule RRPproxyTest do
     assert ok_or_err == :ok
     assert status_domain.domain == domainname
 
-    assert RRPproxy.renew_domain(domainname) == {:error,
-      %{
-        code: 541,
-        data: [],
-        description: "Invalid attribute value; explicit renewals not allowed for this TLD; please set domain to AUTORENEW or RENEWONCE",
-        info: %{}
-      }}
+    assert RRPproxy.renew_domain(domainname) ==
+             {:error,
+              %{
+                code: 541,
+                data: [],
+                description:
+                  "Invalid attribute value; explicit renewals not allowed for this TLD; please set domain to AUTORENEW or RENEWONCE",
+                info: %{}
+              }}
 
     {ok_or_err, list, info} = RRPproxy.query_domain_list()
     assert ok_or_err == :ok
@@ -234,7 +278,7 @@ defmodule RRPproxyTest do
     xfer_creds = %RRPproxy.Client{
       ote: true,
       username: Application.get_env(:rrpproxy, :xfer_username),
-      password: Application.get_env(:rrpproxy, :xfer_password),
+      password: Application.get_env(:rrpproxy, :xfer_password)
     }
 
     RRPproxy.activate_appendix("appendix_de", xfer_creds)
@@ -244,14 +288,30 @@ defmodule RRPproxyTest do
     handle = contact.contact
 
     domainname = "xfer#{:rand.uniform(10000)}.de"
-    {ok_or_err, domain} = RRPproxy.add_domain(domainname, handle, handle, handle, handle, [], "1", xfer_creds)
+
+    {ok_or_err, domain} =
+      RRPproxy.add_domain(domainname, handle, handle, handle, handle, [], "1", xfer_creds)
+
     assert ok_or_err == :ok
     assert domain.status == "ACTIVE"
     assert RRPproxy.set_domain_transfer_mode(domainname, "AUTOAPPROVE", "", xfer_creds) == :ok
     assert RRPproxy.set_domain_auth_code(domainname, "AABBCCDDEE", xfer_creds) == :ok
 
     assert :ok == RRPproxy.transfer_domain(domainname, "usertransfer", "AABBCCDDEE")
-    assert :ok = RRPproxy.transfer_domain(domainname, "approve", "", "", "", "", "", [], "1", xfer_creds)
+
+    assert :ok =
+             RRPproxy.transfer_domain(
+               domainname,
+               "approve",
+               "",
+               "",
+               "",
+               "",
+               "",
+               [],
+               "1",
+               xfer_creds
+             )
 
     {ok_or_err, list, _} = RRPproxy.query_transfer_list()
     assert ok_or_err == :ok
@@ -262,10 +322,10 @@ defmodule RRPproxyTest do
     assert is_list(list)
 
     no_owner_change_error = %{
-        code: 545,
-        data: [],
-        description: "Entity reference not found; no ownerchange found for relevant registrar",
-        info: %{}
+      code: 545,
+      data: [],
+      description: "Entity reference not found; no ownerchange found for relevant registrar",
+      info: %{}
     }
 
     assert {:error, no_owner_change_error} == RRPproxy.status_owner_change(domainname)
@@ -302,16 +362,30 @@ defmodule RRPproxyTest do
 
   test "deleting invalid contact should fail" do
     assert RRPproxy.delete_contact("FOO") ==
-      {:error, %{code: 545, data: [], description: "Entity reference not found", info: %{}}}
+             {:error,
+              %{code: 545, data: [], description: "Entity reference not found", info: %{}}}
   end
 
   test "status owner change on invalid transfer should fail" do
     assert RRPproxy.status_owner_change("rrpproxy.net") ==
-      {:error, %{code: 545, data: [], description: "Entity reference not found; no ownerchange found for relevant registrar", info: %{}}}
+             {:error,
+              %{
+                code: 545,
+                data: [],
+                description:
+                  "Entity reference not found; no ownerchange found for relevant registrar",
+                info: %{}
+              }}
   end
 
   test "request token for invalid contact should fail" do
     assert RRPproxy.request_token("FOO") ==
-      {:error, %{code: 549, data: [], description: "Command failed; email sending not available in OTE", info: %{}}}
+             {:error,
+              %{
+                code: 549,
+                data: [],
+                description: "Command failed; email sending not available in OTE",
+                info: %{}
+              }}
   end
 end
