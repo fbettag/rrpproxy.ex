@@ -64,8 +64,6 @@ defmodule RRPproxy.Client do
       new_value = Map.get(extra, f, "") <> "#{v}"
       {data, info, Map.put(extra, f, new_value)}
     else
-      IO.puts("field #{f} with value \"#{v}\" is single result #{is_single_result}")
-
       if is_single_result do
         index_data = Map.get(data, "0", %{})
 
