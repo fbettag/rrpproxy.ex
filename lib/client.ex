@@ -212,7 +212,8 @@ defmodule RRPproxy.Client do
     url = make_url(creds.ote)
 
     request_params =
-      [s_login: creds.username, s_pw: creds.password, command: command] ++ custom_params
+      [{"s_login", creds.username}, {"s_pw", creds.password}, {"command", command}] ++
+        custom_params
 
     retry_func = fn error ->
       if tries > 3 do

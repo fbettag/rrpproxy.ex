@@ -42,7 +42,7 @@ defmodule RRPproxyTest do
     RRPproxy.delete_tag("test-newtag")
 
     assert RRPproxy.add_tag("test-tag", "test 123") == :ok
-    assert RRPproxy.modify_tag("test-tag", "test-newtag", "test 345") == :ok
+    assert RRPproxy.modify_tag("test-tag", [newtag: "test-newtag"], "test 345") == :ok
 
     {ok_or_err, tag} = RRPproxy.status_tag("test-newtag")
     assert ok_or_err == :ok
