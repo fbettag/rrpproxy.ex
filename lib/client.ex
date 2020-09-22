@@ -242,6 +242,7 @@ defmodule RRPproxy.Client do
            is_multi_line_response,
            is_single_result
          ) do
+      {nil, []} = error -> retry_func.(error)
       {:error, :timeout} = error -> retry_func.(error)
       {:error, %{code: 421}} = error -> retry_func.(error)
       {:error, %{code: 423}} = error -> retry_func.(error)

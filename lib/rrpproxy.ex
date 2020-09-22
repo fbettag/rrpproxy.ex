@@ -348,7 +348,7 @@ defmodule RRPproxy do
 
   """
   def query_tag_list(type \\ "domain", offset \\ 0, limit \\ 1000, creds = %Client{} \\ %Client{}) do
-    params = [{"first", offset}, {"limit", limit}]
+    params = [{"first", offset}, {"limit", limit}, {"type", type}]
 
     with {:ok, %{code: 200, data: tags, info: info}} <-
            Client.query("QueryTagList", params, creds) do
