@@ -12,7 +12,7 @@ defmodule RRPproxyTest do
   end
 
   test "status registrar and modifying registrar" do
-    assert RRPproxy.modify_registrar(%{whois: "james and the bandits"}) == :ok
+    assert RRPproxy.modify_registrar(%{whois: "james and the bandits", language: "EN"}) == :ok
 
     {ok_or_err, status} = RRPproxy.status_registrar()
     assert ok_or_err == :ok
@@ -42,7 +42,7 @@ defmodule RRPproxyTest do
     RRPproxy.delete_tag("test-newtag")
 
     assert RRPproxy.add_tag("test-tag", "test 123") == :ok
-    assert RRPproxy.modify_tag("test-tag", [newtag: "test-newtag"], "test 345") == :ok
+    assert RRPproxy.modify_tag("test-tag", [newtag: "test-newtag", description: "test 345"]) == :ok
 
     {ok_or_err, tag} = RRPproxy.status_tag("test-newtag")
     assert ok_or_err == :ok
@@ -260,7 +260,7 @@ defmodule RRPproxyTest do
     assert ok_or_err == :ok
     assert zone == "io"
 
-    {ok_or_err, _} = RRPproxy.get_zone_info("io")
+    {ok_or_err, _} = RRPproxy.get_zone_info("poop.io")
     assert ok_or_err == :ok
   end
 
