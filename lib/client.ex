@@ -16,9 +16,12 @@ defmodule RRPproxy.Client do
     "tag"
   ]
 
-  defp make_url(ote), do: if ote,
-      do: "https://api-ote.rrpproxy.net/api/call",
-    else: "https://api.rrpproxy.net/api/call"
+  defp make_url(ote),
+    do:
+      if(ote,
+        do: "https://api-ote.rrpproxy.net/api/call",
+        else: "https://api.rrpproxy.net/api/call"
+      )
 
   defp to_value(value) do
     try do
@@ -66,14 +69,16 @@ defmodule RRPproxy.Client do
   end
 
   defp case_parts({data, info, extra}, [field, index], value, is_multi_line, is_single_result) do
-    f = field
-        |> String.replace(" ", "_")
-        |> String.downcase()
-        |> String.to_atom()
+    f =
+      field
+      |> String.replace(" ", "_")
+      |> String.downcase()
+      |> String.to_atom()
 
-    v = value
-        |> to_value()
-        |> to_bool()
+    v =
+      value
+      |> to_value()
+      |> to_bool()
 
     cond do
       is_multi_line and is_multi_line_field(field) ->
@@ -160,14 +165,15 @@ defmodule RRPproxy.Client do
 
     data = Enum.map(data, fn {_, v} -> v end)
 
-    data = if Enum.count(data) > 1 do
-      data
-    else
-      case Enum.at(data, 0) do
-        nil -> []
-        only_data -> [Map.merge(only_data, extra)]
+    data =
+      if Enum.count(data) > 1 do
+        data
+      else
+        case Enum.at(data, 0) do
+          nil -> []
+          only_data -> [Map.merge(only_data, extra)]
+        end
       end
-    end
 
     rcode = String.to_integer(rcode)
     code = if code == :ok and rcode >= 300, do: :error, else: :ok

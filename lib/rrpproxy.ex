@@ -119,7 +119,12 @@ defmodule RRPproxy do
   add_contact adds a new contact and returns a contact handle.
 
   """
-  def add_contact(contact, validation \\ true, pre_verify \\ true, %Client{} = creds \\ default_client()) do
+  def add_contact(
+        contact,
+        validation \\ true,
+        pre_verify \\ true,
+        %Client{} = creds \\ default_client()
+      ) do
     params =
       Enum.reduce(contact, [], fn {k, v}, l -> l ++ [{"#{k}", v}] end) ++
         [
@@ -268,11 +273,11 @@ defmodule RRPproxy do
   end
 
   @doc """
-  query_event_list returns a list of events.
+  query_event_list returns a list of events since the given date.
 
   """
-  def query_event_list(offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  def query_event_list(date, offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
+    params = [{"mindate", date}, {"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: events, info: info}} <-
            Client.query("QueryEventList", params, creds) do
@@ -348,7 +353,12 @@ defmodule RRPproxy do
   query_tag_list gets a list of tags.
 
   """
-  def query_tag_list(type \\ "domain", offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
+  def query_tag_list(
+        type \\ "domain",
+        offset \\ 0,
+        limit \\ 1000,
+        %Client{} = creds \\ default_client()
+      ) do
     params = [{"first", offset}, {"limit", limit}, {"type", type}]
 
     with {:ok, %{code: 200, data: tags, info: info}} <-
@@ -441,14 +451,16 @@ defmodule RRPproxy do
     params = [{"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: nameservers, info: info}} <-
-      Client.query("QueryNameserverList", params, creds) do
-      ret = nameservers
-      |> Enum.flat_map(fn ns ->
-        case Map.get(ns, :nameserver) do
-          nil -> []
-          other -> [other]
-        end
-      end)
+           Client.query("QueryNameserverList", params, creds) do
+      ret =
+        nameservers
+        |> Enum.flat_map(fn ns ->
+          case Map.get(ns, :nameserver) do
+            nil -> []
+            other -> [other]
+          end
+        end)
+
       {:ok, ret, info}
     end
   end
@@ -755,7 +767,11 @@ defmodule RRPproxy do
   query_foreign_transfer_list returns a list of foreign transfers.
 
   """
-  def query_foreign_transfer_list(offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
+  def query_foreign_transfer_list(
+        offset \\ 0,
+        limit \\ 2000,
+        %Client{} = creds \\ default_client()
+      ) do
     params = [{"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
@@ -796,7 +812,12 @@ defmodule RRPproxy do
   query_accounting_list returns all items for accounting since the given date.
 
   """
-  def query_accounting_list(date, offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
+  def query_accounting_list(
+        date,
+        offset \\ 0,
+        limit \\ 2000,
+        %Client{} = creds \\ default_client()
+      ) do
     params = [{"mindate", date}, {"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
@@ -809,7 +830,11 @@ defmodule RRPproxy do
   query_upcoming_accounting_list returns all items that are upcoming for accounting.
 
   """
-  def query_upcoming_accounting_list(offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
+  def query_upcoming_accounting_list(
+        offset \\ 0,
+        limit \\ 2000,
+        %Client{} = creds \\ default_client()
+      ) do
     params = [{"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
@@ -834,7 +859,11 @@ defmodule RRPproxy do
   query_available_promotion_list returns all available promotions.
 
   """
-  def query_available_promotion_list(offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
+  def query_available_promotion_list(
+        offset \\ 0,
+        limit \\ 2000,
+        %Client{} = creds \\ default_client()
+      ) do
     params = [{"first", offset}, {"limit", limit}]
 
     with {:ok, %{code: 200, data: data, info: info}} <-

@@ -1,4 +1,4 @@
-# Rrpproxy
+# RRPproxy
 
 This package implements the [RRPproxy.net](https://rrpproxy.net) API for registering domains.
 
@@ -12,7 +12,7 @@ by adding `rrpproxy` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:rrpproxy, "~> 0.0.9"}
+    {:rrpproxy, "~> 0.1.0"}
   ]
 end
 ```

@@ -42,7 +42,7 @@ defmodule RRPproxyTest do
     RRPproxy.delete_tag("test-newtag")
 
     assert RRPproxy.add_tag("test-tag", "test 123") == :ok
-    assert RRPproxy.modify_tag("test-tag", [newtag: "test-newtag", description: "test 345"]) == :ok
+    assert RRPproxy.modify_tag("test-tag", newtag: "test-newtag", description: "test 345") == :ok
 
     {ok_or_err, tag} = RRPproxy.status_tag("test-newtag")
     assert ok_or_err == :ok
@@ -58,7 +58,7 @@ defmodule RRPproxyTest do
   # events
 
   test "lifecycle of an event" do
-    {ok_or_err, list, _} = RRPproxy.query_event_list()
+    {ok_or_err, list, _} = RRPproxy.query_event_list(~D[2010-12-31])
     assert ok_or_err == :ok
 
     if length(list) > 0 do
