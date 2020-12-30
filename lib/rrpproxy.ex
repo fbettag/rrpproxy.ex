@@ -276,8 +276,14 @@ defmodule RRPproxy do
   query_event_list returns a list of events since the given date.
 
   """
-  def query_event_list(date, offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
-    params = [{"mindate", date}, {"first", offset}, {"limit", limit}]
+  def query_event_list(
+        date,
+        opts \\ [],
+        offset \\ 0,
+        limit \\ 1000,
+        %Client{} = creds \\ default_client()
+      ) do
+    params = [{"mindate", date}, {"first", offset}, {"limit", limit}] ++ opts
 
     with {:ok, %{code: 200, data: events, info: info}} <-
            Client.query("QueryEventList", params, creds) do

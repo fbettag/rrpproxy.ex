@@ -233,6 +233,7 @@ defmodule RRPproxy.Client do
            is_single_result
          ) do
       {:error, :bad_response} = error -> retry_func.(error)
+      {:error, :closed} = error -> retry_func.(error)
       {:error, :timeout} = error -> retry_func.(error)
       {:error, %{code: 421}} = error -> retry_func.(error)
       {:error, %{code: 423}} = error -> retry_func.(error)
