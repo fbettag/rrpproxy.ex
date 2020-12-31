@@ -712,43 +712,18 @@ defmodule RRPproxy do
         bill \\ "",
         nameservers \\ [],
         period \\ "1",
+        opts \\ [],
         %Client{} = creds \\ default_client()
       ) do
-    period =
-      if action == "request" do
-        [period: period]
-      else
-        []
-      end
-
     params =
       [{"domain", domain}, {"action", action}] ++
-        period ++
-        if auth == "" do
-          []
-        else
-          [{"auth", auth}]
-        end ++
-        if owner == "" do
-          []
-        else
-          [{"ownercontact0", owner}]
-        end ++
-        if admin == "" do
-          []
-        else
-          [{"admincontact0", admin}]
-        end ++
-        if tech == "" do
-          []
-        else
-          [{"techcontact0", tech}]
-        end ++
-        if bill == "" do
-          []
-        else
-          [{"billingcontact0", bill}]
-        end ++
+        opts ++
+        if(action == "request", do: [period: period], else: []) ++
+        if(auth == "", do: [], else: [{"auth", auth}]) ++
+        if(owner == "", do: [], else: [{"ownercontact0", owner}]) ++
+        if(admin == "", do: [], else: [{"admincontact0", admin}]) ++
+        if(tech == "", do: [], else: [{"techcontact0", tech}]) ++
+        if(bill == "", do: [], else: [{"billingcontact0", bill}]) ++
         Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
 
     with {:ok, %{code: 200}} <- Client.query("TransferDomain", params, creds) do
