@@ -525,6 +525,7 @@ defmodule RRPproxy do
         bill,
         nameservers \\ [],
         period \\ "1",
+        opts \\ [],
         %Client{} = creds \\ default_client()
       ) do
     params =
@@ -536,6 +537,7 @@ defmodule RRPproxy do
         {"techcontact0", tech},
         {"billingcontact0", bill}
       ] ++
+        opts ++
         Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
 
     with {:ok, %{code: 200, data: [data]}} <- Client.query("AddDomain", params, creds) do

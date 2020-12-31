@@ -6,7 +6,7 @@ defmodule RRPproxy.Mixfile do
   def project do
     [
       app: :rrpproxy,
-      version: "0.1.2",
+      version: "0.1.3",
       elixir: "~> 1.4",
       source_url: @project_url,
       homepage_url: @project_url,
