@@ -12,7 +12,7 @@ by adding `rrpproxy` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:rrpproxy, "~> 0.1.3"}
+    {:rrpproxy, "~> 0.1.4"}
   ]
 end
 ```

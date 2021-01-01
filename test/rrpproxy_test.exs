@@ -291,7 +291,7 @@ defmodule RRPproxyTest do
     domainname = "xfer#{:rand.uniform(10000)}.de"
 
     {ok_or_err, domain} =
-      RRPproxy.add_domain(domainname, handle, handle, handle, handle, [], "1", xfer_creds)
+      RRPproxy.add_domain(domainname, handle, handle, handle, handle, [], "", [], xfer_creds)
 
     assert ok_or_err == :ok
     assert domain.status == "ACTIVE"
@@ -311,6 +311,7 @@ defmodule RRPproxyTest do
                "",
                [],
                "1",
+               [],
                xfer_creds
              )
 
