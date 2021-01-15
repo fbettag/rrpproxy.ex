@@ -30,7 +30,9 @@ defmodule RRPproxy.Mixfile do
       {:httpoison, "~> 1.7"},
       {:ecto, "~> 3.0"},
       {:ex_doc, "~> 0.19", only: :dev},
-      {:credo, github: "rrrene/credo", only: [:dev, :test]}
+      {:credo, github: "rrrene/credo", only: [:dev, :test]},
+      {:doctor, "~> 0.17.0", only: :dev},
+      {:git_hooks, "~> 0.4.0", only: [:test, :dev], runtime: false}
     ]
   end
 

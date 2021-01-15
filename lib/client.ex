@@ -24,16 +24,14 @@ defmodule RRPproxy.Client do
       )
 
   defp to_value(value) do
-    try do
-      String.to_integer(value)
-    rescue
-      ArgumentError ->
-        try do
-          String.to_float(value)
-        rescue
-          ArgumentError -> value
-        end
-    end
+    String.to_integer(value)
+  rescue
+    ArgumentError ->
+      try do
+        String.to_float(value)
+      rescue
+        ArgumentError -> value
+      end
   end
 
   defp to_bool("true"), do: true
