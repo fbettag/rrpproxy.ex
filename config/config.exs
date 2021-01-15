@@ -19,7 +19,7 @@ if Mix.env() != :prod,
             "mix xref deprecated --abort-if-any",
             "mix xref unreachable --abort-if-any",
             "mix format --check-formatted",
-            "mix credo --strict",
+            # "mix credo --strict",
             # "mix doctor --summary",
             "mix test"
           ]

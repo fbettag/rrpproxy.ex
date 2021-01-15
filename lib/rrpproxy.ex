@@ -524,14 +524,12 @@ defmodule RRPproxy do
         tech,
         bill,
         nameservers \\ [],
-        period \\ "1",
         opts \\ [],
         %Client{} = creds \\ default_client()
       ) do
     params =
       [
         {"domain", domain},
-        {"period", period},
         {"ownercontact0", owner},
         {"admincontact0", admin},
         {"techcontact0", tech},
@@ -713,14 +711,12 @@ defmodule RRPproxy do
         tech \\ "",
         bill \\ "",
         nameservers \\ [],
-        period \\ "",
         opts \\ [],
         %Client{} = creds \\ default_client()
       ) do
     params =
       [{"domain", domain}, {"action", action}] ++
         opts ++
-        if(period != nil and period != "", do: [period: period], else: []) ++
         if(auth == "", do: [], else: [{"auth", auth}]) ++
         if(owner == "", do: [], else: [{"ownercontact0", owner}]) ++
         if(admin == "", do: [], else: [{"admincontact0", admin}]) ++
