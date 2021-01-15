@@ -6,7 +6,7 @@ defmodule RRPproxy.Mixfile do
   def project do
     [
       app: :rrpproxy,
-      version: "0.1.4",
+      version: "0.1.5",
       elixir: "~> 1.4",
       source_url: @project_url,
       homepage_url: @project_url,
@@ -27,7 +27,7 @@ defmodule RRPproxy.Mixfile do
   defp deps do
     [
       {:poison, "~> 4.0.1"},
-      {:httpoison, "~> 1.6"},
+      {:httpoison, "~> 1.7"},
       {:ecto, "~> 3.0"},
       {:ex_doc, "~> 0.19", only: :dev},
       {:credo, github: "rrrene/credo", only: [:dev, :test]}
