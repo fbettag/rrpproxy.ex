@@ -1,27 +1,57 @@
 defmodule RRPproxy do
   @moduledoc """
-  Documentation for RRPproxy API integration.
+  Documentation for `RRPproxy` which provides API for rrpproxy.net.
 
+  ## Installation
+
+  This package can be installed by adding `rrpproxy` to your list of dependencies in `mix.exs`:
+
+  ```elixir
+  def deps do
+    [
+      {:rrpproxy, "~> 0.1.7"}
+    ]
+  end
+  ```
+
+  ## Configuration
+
+  Put the following lines into your `config.exs` or better, into your environment
+  configuration files like `test.exs`, `dev.exs` or `prod.exs.`.
+
+  ```elixir
+  config :rrpproxy,
+    username: "<your login>",
+    password: "<your password>",
+    ote: true
+  ```
+
+  ## Usage Examples
+
+  Check for a free domain, where `false` means "not available" and `true` means "available":
+
+  ```elixir
+  iex> RRPproxy.status_domain("example.com")
+  {:ok, false}
+  ```
   """
-
   alias RRPproxy.Client
+  alias RRPproxy.Connection
 
-  def default_client do
-    username = Application.get_env(:rrpproxy, :username)
-    password = Application.get_env(:rrpproxy, :password)
-    ote = Application.get_env(:rrpproxy, :ote, true)
-    %Client{ote: ote, username: username, password: password}
-  end
+  defp fix_attrs(attrs),
+    do: Enum.flat_map(attrs, fn {k, v} -> [{to_atom(k), to_value(v)}] end)
 
-  defp fix_attrs(attrs) do
-    Enum.map(attrs, fn {k, v} ->
-      case v do
-        true -> {k, "1"}
-        false -> {k, "0"}
-        other -> {k, other}
-      end
-    end)
-  end
+  defp to_value(true), do: "1"
+  defp to_value(false), do: "0"
+  defp to_value(other), do: other
+  defp to_atom(key) when is_atom(key), do: key
+  defp to_atom(key), do: String.to_existing_atom(key)
+
+  @type return() :: {:ok, any()} | {:error, any()}
+  @type integer_opt() :: integer() | nil
+  @type boolean_opt() :: boolean() | nil
+  @type string_opt() :: String.t() | nil
+  @type client_opt() :: Client.t() | nil
 
   # Account
 
@@ -29,8 +59,10 @@ defmodule RRPproxy do
   status_account returns information about the accounts financial status.
 
   """
-  def status_account(%Client{} = creds \\ default_client()) do
-    with {:ok, %{code: 200, data: [status]}} <- Client.query("StatusAccount", [], creds) do
+  @spec status_account() :: return
+  @spec status_account(client_opt) :: return
+  def status_account(client \\ Client.new()) do
+    with {:ok, %{code: 200, data: [status]}} <- Connection.call("StatusAccount", [], client) do
       {:ok, status}
     end
   end
@@ -39,8 +71,9 @@ defmodule RRPproxy do
   status_registrar returns information about your account information.
 
   """
-  def status_registrar(%Client{} = creds \\ default_client()) do
-    with {:ok, %{code: 200, data: statuses}} <- Client.query("StatusRegistrar", [], creds) do
+  @spec status_registrar(client_opt) :: return
+  def status_registrar(client \\ Client.new()) do
+    with {:ok, %{code: 200, data: statuses}} <- Connection.call("StatusRegistrar", [], client) do
       {:ok, Enum.find(statuses, fn status -> Map.has_key?(status, :language) end)}
     end
   end
@@ -49,10 +82,9 @@ defmodule RRPproxy do
   modify_registrar modifies the registrar's (or subaccounts) settings.
 
   """
-  def modify_registrar(registrar, %Client{} = creds \\ default_client()) do
-    params = Enum.reduce(registrar, [], fn {k, v}, l -> l ++ [{"#{k}", v}] end)
-
-    with {:ok, _} <- Client.query("ModifyRegistrar", params, creds) do
+  @spec modify_registrar(keyword(), client_opt) :: return
+  def modify_registrar(registrar, client \\ Client.new()) do
+    with {:ok, _} <- Connection.call("ModifyRegistrar", registrar, client) do
       :ok
     end
   end
@@ -61,29 +93,32 @@ defmodule RRPproxy do
   query_appendix_list returns a list of all appendices.
 
   """
-  def query_appendix_list(offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_appendix_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_appendix_list(offset \\ 0, limit \\ 1000, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: appendices, info: info}} <-
-           Client.query("QueryAppendixList", params, creds) do
+           Connection.call("QueryAppendixList", params, client) do
       {:ok, appendices, info}
     end
   end
 
+  @x_accept_tac String.to_atom("X-ACCEPT-TAC")
   @doc """
   activate_appendix activates an appendix.
 
   """
+  @spec activate_appendix(String.t(), boolean_opt(), client_opt) :: return
   def activate_appendix(
         appendix,
         accept_terms_and_conditions \\ true,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     accept_tac = if accept_terms_and_conditions, do: 1, else: 0
-    params = [{"appendix", appendix}, {"X-ACCEPT-TAC", accept_tac}]
+    params = [appendix: appendix] ++ [{@x_accept_tac, accept_tac}]
 
     with {:ok, %{code: 200, data: %{"0": %{email: "successful"}}}} <-
-           Client.query("ActivateAppendix", params, creds) do
+           Connection.call("ActivateAppendix", params, client) do
       :ok
     end
   end
@@ -94,11 +129,12 @@ defmodule RRPproxy do
   query_contact_list returns a list of all contact handles.
 
   """
-  def query_contact_list(offset \\ 0, limit \\ 100, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_contact_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_contact_list(offset \\ 0, limit \\ 100, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: contacts, info: info}} <-
-           Client.query("QueryContactList", params, creds) do
+           Connection.call("QueryContactList", params, client) do
       {:ok, Enum.map(contacts, fn contact -> contact.contact end), info}
     end
   end
@@ -107,8 +143,9 @@ defmodule RRPproxy do
   get_contact returns a contact handle.
 
   """
-  def status_contact(contact, %Client{} = creds \\ default_client()) do
-    case Client.query("StatusContact", [{"contact", contact}], creds) do
+  @spec status_contact(String.t(), client_opt) :: return
+  def status_contact(contact, client \\ Client.new()) do
+    case Connection.call("StatusContact", [contact: contact], client) do
       {:ok, %{code: 200, data: [contact]}} -> {:ok, contact}
       {:ok, %{code: 200, data: [contact, %{status: "ok"}]}} -> {:ok, contact}
       other -> other
@@ -119,37 +156,22 @@ defmodule RRPproxy do
   add_contact adds a new contact and returns a contact handle.
 
   """
+  @spec add_contact(keyword(), boolean_opt(), boolean_opt(), client_opt) :: return
   def add_contact(
         contact,
         validation \\ true,
         pre_verify \\ true,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      Enum.reduce(contact, [], fn {k, v}, l -> l ++ [{"#{k}", v}] end) ++
+      contact ++
         [
-          {
-            "validation",
-            if validation do
-              1
-            else
-              0
-            end
-          }
-        ] ++
-        [
-          {
-            "preverify",
-            if pre_verify do
-              1
-            else
-              0
-            end
-          }
-        ] ++
-        [{"autodelete", 1}]
+          validation: if(validation, do: 1, else: 0),
+          preverify: if(pre_verify, do: 1, else: 0),
+          autodelete: 1
+        ]
 
-    with {:ok, %{code: 200, data: [contact]}} <- Client.query("AddContact", params, creds) do
+    with {:ok, %{code: 200, data: [contact]}} <- Connection.call("AddContact", params, client) do
       {:ok, contact}
     end
   end
@@ -158,47 +180,25 @@ defmodule RRPproxy do
   modify_contact modifies an existing contact and returns a contact handle.
 
   """
+  @spec modify_contact(keyword(), boolean_opt(), boolean_opt(), boolean_opt(), client_opt) ::
+          return
   def modify_contact(
         contact,
         validation \\ true,
         pre_verify \\ false,
         check_only \\ false,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      Enum.reduce(contact, [], fn {k, v}, l -> l ++ [{"#{k}", v}] end) ++
+      contact ++
         [
-          {
-            "validation",
-            if validation do
-              1
-            else
-              0
-            end
-          }
-        ] ++
-        [
-          {
-            "preverify",
-            if pre_verify do
-              1
-            else
-              0
-            end
-          }
-        ] ++
-        [
-          {
-            "checkonly",
-            if check_only do
-              1
-            else
-              0
-            end
-          }
+          validation: if(validation, do: 1, else: 0),
+          preverify: if(pre_verify, do: 1, else: 0),
+          checkonly: if(check_only, do: 1, else: 0)
         ]
 
-    with {:ok, %{code: 200, data: [contact]}} <- Client.query("ModifyContact", params, creds) do
+    with {:ok, %{code: 200, data: [contact]}} <-
+           Connection.call("ModifyContact", params, client) do
       {:ok, contact}
     end
   end
@@ -207,8 +207,10 @@ defmodule RRPproxy do
   delete_contact deletes a given contact.
 
   """
-  def delete_contact(contact, %Client{} = creds \\ default_client()) do
-    with {:ok, %{code: 200}} <- Client.query("DeleteContact", [{"contact", contact}], creds) do
+  @spec delete_contact(String.t(), client_opt) :: return
+  def delete_contact(contact, client \\ Client.new()) do
+    with {:ok, %{code: 200}} <-
+           Connection.call("DeleteContact", [contact: contact], client) do
       :ok
     end
   end
@@ -217,9 +219,10 @@ defmodule RRPproxy do
   clone_contact clones the given contact.
 
   """
-  def clone_contact(contact, %Client{} = creds \\ default_client()) do
+  @spec clone_contact(String.t(), client_opt) :: return
+  def clone_contact(contact, client \\ Client.new()) do
     with {:ok, %{code: 200, data: [contact]}} <-
-           Client.query("CloneContact", [{"contact", contact}], creds) do
+           Connection.call("CloneContact", [contact: contact], client) do
       {:ok, contact}
     end
   end
@@ -228,8 +231,10 @@ defmodule RRPproxy do
   restore_contact restores a deleted contact.
 
   """
-  def restore_contact(contact, %Client{} = creds \\ default_client()) do
-    with {:ok, %{code: 200}} <- Client.query("RestoreContact", [{"contact", contact}], creds) do
+  @spec restore_contact(String.t(), client_opt) :: return
+  def restore_contact(contact, client \\ Client.new()) do
+    with {:ok, %{code: 200}} <-
+           Connection.call("RestoreContact", [contact: contact], client) do
       :ok
     end
   end
@@ -238,10 +243,11 @@ defmodule RRPproxy do
   request_token requests a verification token for the given contact or domain.
 
   """
-  def request_token(people_contact_or_domain, %Client{} = creds \\ default_client()) do
-    params = [{"contact", people_contact_or_domain}, {"type", "ContactDisclosure"}]
+  @spec request_token(String.t(), client_opt) :: return
+  def request_token(people_contact_or_domain, client \\ Client.new()) do
+    params = [contact: people_contact_or_domain, type: "ContactDisclosure"]
 
-    with {:ok, %{code: 200}} <- Client.query("RequestToken", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("RequestToken", params, client) do
       :ok
     end
   end
@@ -252,10 +258,11 @@ defmodule RRPproxy do
   delete_event deletes the given event by id.
 
   """
-  def delete_event(event, %Client{} = creds \\ default_client()) do
-    params = [{"event", event}]
+  @spec delete_event(String.t(), client_opt) :: return
+  def delete_event(event, client \\ Client.new()) do
+    params = [event: event]
 
-    with {:ok, %{code: 200}} <- Client.query("DeleteEvent", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("DeleteEvent", params, client) do
       :ok
     end
   end
@@ -264,10 +271,11 @@ defmodule RRPproxy do
   status_event gets an event by id.
 
   """
-  def status_event(event, %Client{} = creds \\ default_client()) do
-    params = [{"event", event}]
+  @spec status_event(String.t(), client_opt) :: return
+  def status_event(event, client \\ Client.new()) do
+    params = [event: event]
 
-    with {:ok, %{code: 200, data: [event]}} <- Client.query("StatusEvent", params, creds) do
+    with {:ok, %{code: 200, data: [event]}} <- Connection.call("StatusEvent", params, client) do
       {:ok, event}
     end
   end
@@ -276,26 +284,23 @@ defmodule RRPproxy do
   query_event_list returns a list of events since the given date.
 
   """
+  @spec query_event_list(String.t(), keyword() | nil, integer_opt(), integer_opt(), client_opt) ::
+          return
   def query_event_list(
         date,
         opts \\ [],
         offset \\ 0,
         limit \\ 1000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"mindate", date}, {"first", offset}, {"limit", limit}] ++ opts
+    params = [mindate: date, first: offset, limit: limit] ++ opts
 
     with {:ok, %{code: 200, data: events, info: info}} <-
-           Client.query("QueryEventList", params, creds) do
+           Connection.call("QueryEventList", params, client) do
       {:ok,
        Enum.flat_map(events, fn v ->
          e = Map.get(v, :event, [])
-
-         if is_list(e) do
-           e
-         else
-           [e]
-         end
+         if is_list(e), do: e, else: [e]
        end), info}
     end
   end
@@ -306,10 +311,11 @@ defmodule RRPproxy do
   add_tag adds a tags to be used for tagging domains or zones.
 
   """
-  def add_tag(tag, description \\ "", type \\ "domain", %Client{} = creds \\ default_client()) do
-    params = [{"tag", tag}, {"type", type}, {"description", description}]
+  @spec add_tag(String.t(), string_opt(), string_opt(), client_opt) :: return
+  def add_tag(tag, description \\ "", type \\ "domain", client \\ Client.new()) do
+    params = [tag: tag, type: type, description: description]
 
-    with {:ok, %{code: 200}} <- Client.query("AddTag", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("AddTag", params, client) do
       :ok
     end
   end
@@ -318,15 +324,16 @@ defmodule RRPproxy do
   modify_tag modifies tags by the given tag name for domains and zones.
 
   """
+  @spec modify_tag(String.t(), keyword(), string_opt(), client_opt) :: return
   def modify_tag(
         tag,
         params,
         type \\ "domain",
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"tag", tag}, {"type", type}] ++ params
+    params = [tag: tag, type: type] ++ params
 
-    with {:ok, %{code: 200}} <- Client.query("ModifyTag", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("ModifyTag", params, client) do
       :ok
     end
   end
@@ -335,10 +342,11 @@ defmodule RRPproxy do
   delete_tag deletes a the given tag.
 
   """
-  def delete_tag(tag, type \\ "domain", %Client{} = creds \\ default_client()) do
-    params = [{"tag", tag}, {"type", type}]
+  @spec delete_tag(String.t(), string_opt(), client_opt) :: return
+  def delete_tag(tag, type \\ "domain", client \\ Client.new()) do
+    params = [tag: tag, type: type]
 
-    with {:ok, %{code: 200}} <- Client.query("DeleteTag", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("DeleteTag", params, client) do
       :ok
     end
   end
@@ -347,10 +355,11 @@ defmodule RRPproxy do
   status_tag gets the given tag by name.
 
   """
-  def status_tag(tag, type \\ "domain", %Client{} = creds \\ default_client()) do
-    params = [{"tag", tag}, {"type", type}]
+  @spec status_tag(String.t(), string_opt(), client_opt) :: return
+  def status_tag(tag, type \\ "domain", client \\ Client.new()) do
+    params = [tag: tag, type: type]
 
-    with {:ok, %{code: 200, data: [tag]}} <- Client.query("StatusTag", params, creds) do
+    with {:ok, %{code: 200, data: [tag]}} <- Connection.call("StatusTag", params, client) do
       {:ok, tag}
     end
   end
@@ -359,41 +368,54 @@ defmodule RRPproxy do
   query_tag_list gets a list of tags.
 
   """
+  @spec query_tag_list(string_opt(), integer_opt(), integer_opt(), client_opt) :: return
   def query_tag_list(
         type \\ "domain",
         offset \\ 0,
         limit \\ 1000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"first", offset}, {"limit", limit}, {"type", type}]
+    params = [first: offset, limit: limit, type: type]
 
     with {:ok, %{code: 200, data: tags, info: info}} <-
-           Client.query("QueryTagList", params, creds) do
+           Connection.call("QueryTagList", params, client) do
       {:ok,
        Enum.flat_map(tags, fn v ->
          e = Map.get(v, :tag, [])
-
-         if is_list(e) do
-           e
-         else
-           [e]
-         end
+         if is_list(e), do: e, else: [e]
        end), info}
     end
   end
 
   # Nameservers
 
+  @ipaddresses [
+    :ipaddress0,
+    :ipaddress1,
+    :ipaddress2,
+    :ipaddress3,
+    :ipaddress4,
+    :ipaddress5,
+    :ipaddress6,
+    :ipaddress7,
+    :ipaddress8,
+    :ipaddress9,
+    :ipaddress10
+  ]
   @doc """
   add_nameserver adds a nameservers to be used for nameserverging domains or zones.
 
   """
-  def add_nameserver(nameserver, ips, %Client{} = creds \\ default_client()) do
+  @spec add_nameserver(String.t(), [String.t()], client_opt) :: return
+  def add_nameserver(nameserver, ips, client \\ Client.new()) do
     params =
-      [{"nameserver", nameserver}] ++
-        Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
+      ips
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {ip, idx} -> [{Enum.at(@ipaddresses, idx), ip}] end)
 
-    with {:ok, %{code: 200}} <- Client.query("AddNameserver", params, creds) do
+    params = params ++ [nameserver: nameserver]
+
+    with {:ok, %{code: 200}} <- Connection.call("AddNameserver", params, client) do
       :ok
     end
   end
@@ -402,12 +424,16 @@ defmodule RRPproxy do
   modify_nameserver modifies nameservers by the given nameserver name for domains and zones.
 
   """
-  def modify_nameserver(nameserver, ips, %Client{} = creds \\ default_client()) do
+  @spec modify_nameserver(String.t(), [String.t()], client_opt) :: return
+  def modify_nameserver(nameserver, ips, client \\ Client.new()) do
     params =
-      [{"nameserver", nameserver}] ++
-        Enum.map(Enum.with_index(ips), fn {ip, idx} -> {"ipaddress#{idx}", ip} end)
+      ips
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {ip, idx} -> [{String.to_existing_atom("ipaddress#{idx}"), ip}] end)
 
-    with {:ok, %{code: 200}} <- Client.query("ModifyNameserver", params, creds) do
+    params = params ++ [nameserver: nameserver]
+
+    with {:ok, %{code: 200}} <- Connection.call("ModifyNameserver", params, client) do
       :ok
     end
   end
@@ -416,10 +442,11 @@ defmodule RRPproxy do
   delete_nameserver deletes a the given nameserver.
 
   """
-  def delete_nameserver(nameserver, %Client{} = creds \\ default_client()) do
-    params = [{"nameserver", nameserver}]
+  @spec delete_nameserver(String.t(), client_opt) :: return
+  def delete_nameserver(nameserver, client \\ Client.new()) do
+    params = [nameserver: nameserver]
 
-    with {:ok, %{code: 200}} <- Client.query("DeleteNameserver", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("DeleteNameserver", params, client) do
       :ok
     end
   end
@@ -428,10 +455,11 @@ defmodule RRPproxy do
   check_nameserver checks a the given nameserver.
 
   """
-  def check_nameserver(nameserver, %Client{} = creds \\ default_client()) do
-    params = [{"nameserver", nameserver}]
+  @spec check_nameserver(String.t(), client_opt) :: return
+  def check_nameserver(nameserver, client \\ Client.new()) do
+    params = [nameserver: nameserver]
 
-    with {:ok, %{code: 200}} <- Client.query("CheckNameserver", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("CheckNameserver", params, client) do
       :ok
     end
   end
@@ -440,11 +468,12 @@ defmodule RRPproxy do
   status_nameserver gets the given nameserver by name.
 
   """
-  def status_nameserver(nameserver, %Client{} = creds \\ default_client()) do
-    params = [{"nameserver", nameserver}]
+  @spec status_nameserver(String.t(), client_opt) :: return
+  def status_nameserver(nameserver, client \\ Client.new()) do
+    params = [nameserver: nameserver]
 
     with {:ok, %{code: 200, data: [nameserver]}} <-
-           Client.query("StatusNameserver", params, creds) do
+           Connection.call("StatusNameserver", params, client) do
       {:ok, nameserver}
     end
   end
@@ -453,11 +482,12 @@ defmodule RRPproxy do
   query_nameserver_list gets a list of nameservers.
 
   """
-  def query_nameserver_list(offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_nameserver_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_nameserver_list(offset \\ 0, limit \\ 1000, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: nameservers, info: info}} <-
-           Client.query("QueryNameserverList", params, creds) do
+           Connection.call("QueryNameserverList", params, client) do
       ret =
         nameservers
         |> Enum.flat_map(fn ns ->
@@ -477,11 +507,12 @@ defmodule RRPproxy do
   query_domain_list returns a list of all registerd domains.
 
   """
-  def query_domain_list(offset \\ 0, limit \\ 1000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_domain_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_domain_list(offset \\ 0, limit \\ 1000, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: domains, info: info}} <-
-           Client.query("QueryDomainList", params, creds) do
+           Connection.call("QueryDomainList", params, client) do
       {:ok, Enum.map(domains, fn v -> v.domain end), info}
     end
   end
@@ -490,10 +521,11 @@ defmodule RRPproxy do
   check_domain checks wether the given domain name is free.
 
   """
-  def check_domain(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec check_domain(String.t(), client_opt) :: return
+  def check_domain(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    case Client.query("CheckDomain", params, creds) do
+    case Connection.call("CheckDomain", params, client) do
       {:ok, %{code: 210}} -> {:ok, true}
       {:ok, %{code: 211}} -> {:ok, false}
       other -> other
@@ -504,11 +536,12 @@ defmodule RRPproxy do
   status_domain gets the given domain by name.
 
   """
-  def status_domain(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec status_domain(String.t(), client_opt) :: return
+  def status_domain(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
     with {:ok, %{code: 200, data: [domain]}} <-
-           Client.query("StatusDomain", params, creds, false, true) do
+           Connection.call("StatusDomain", params, client, false, true) do
       {:ok, domain}
     end
   end
@@ -517,6 +550,16 @@ defmodule RRPproxy do
   add_domain registers a new domain.
 
   """
+  @spec add_domain(
+          String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          [String.t()] | nil,
+          keyword() | nil,
+          client_opt
+        ) :: return
   def add_domain(
         domain,
         owner,
@@ -525,20 +568,25 @@ defmodule RRPproxy do
         bill,
         nameservers \\ [],
         opts \\ [],
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      [
-        {"domain", domain},
-        {"ownercontact0", owner},
-        {"admincontact0", admin},
-        {"techcontact0", tech},
-        {"billingcontact0", bill}
-      ] ++
-        opts ++
-        Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
+      nameservers
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {ns, i} -> [{String.to_existing_atom("nameserver#{i}"), ns}] end)
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("AddDomain", params, creds) do
+    params =
+      params ++
+        opts ++
+        [
+          domain: domain,
+          ownercontact0: owner,
+          admincontact0: admin,
+          techcontact0: tech,
+          billingcontact0: bill
+        ]
+
+    with {:ok, %{code: 200, data: [data]}} <- Connection.call("AddDomain", params, client) do
       {:ok, data}
     end
   end
@@ -547,10 +595,11 @@ defmodule RRPproxy do
   modify_domain modifies domains by the given domain name for domains and zones.
 
   """
-  def modify_domain(domain, attrs \\ [], %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}] ++ fix_attrs(attrs)
+  @spec modify_domain(String.t(), [String.t()] | nil, client_opt) :: return
+  def modify_domain(domain, attrs \\ [], client \\ Client.new()) do
+    params = [domain: domain] ++ fix_attrs(attrs)
 
-    with {:ok, %{code: 200}} <- Client.query("ModifyDomain", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("ModifyDomain", params, client) do
       :ok
     end
   end
@@ -559,10 +608,11 @@ defmodule RRPproxy do
   delete_domain deletes a registered domain.
 
   """
-  def delete_domain(domain, action \\ "instant", %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}, {"action", String.upcase(action)}]
+  @spec delete_domain(String.t(), string_opt(), client_opt) :: return
+  def delete_domain(domain, action \\ "instant", client \\ Client.new()) do
+    params = [domain: domain, action: String.upcase(action)]
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("DeleteDomain", params, creds) do
+    with {:ok, %{code: 200, data: [data]}} <- Connection.call("DeleteDomain", params, client) do
       {:ok, data}
     end
   end
@@ -571,10 +621,11 @@ defmodule RRPproxy do
   renew_domain renews a registered domain.
 
   """
-  def renew_domain(domain, years \\ 1, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}, {"period", years}]
+  @spec renew_domain(String.t(), integer_opt(), client_opt) :: return
+  def renew_domain(domain, years \\ 1, client \\ Client.new()) do
+    params = [domain: domain, period: years]
 
-    with {:ok, %{code: 200}} <- Client.query("RenewDomain", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("RenewDomain", params, client) do
       :ok
     end
   end
@@ -583,16 +634,15 @@ defmodule RRPproxy do
   set_auth_code sets the domains auth-code for transfer.
 
   """
-  def set_domain_auth_code(domain, code, %Client{} = creds \\ default_client()) do
+  @spec set_domain_auth_code(String.t(), String.t(), client_opt) :: return
+  def set_domain_auth_code(domain, code, client \\ Client.new()) do
     params =
-      [{"domain", domain}, {"auth", code}, {"type", 1}] ++
-        if code == "" do
-          [{"action", "delete"}]
-        else
-          [{"action", "set"}]
-        end
+      [domain: domain, auth: code, type: 1] ++
+        if code == "",
+          do: [action: "delete"],
+          else: [action: "set"]
 
-    with {:ok, %{code: 200}} <- Client.query("SetAuthcode", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("SetAuthcode", params, client) do
       :ok
     end
   end
@@ -605,21 +655,18 @@ defmodule RRPproxy do
   The domains mode for renewals (only valid for the zone nl, optional): DEFAULT | AUTORENEW | AUTOEXPIRE | AUTODELETE | RENEWONCE | AUTORENEWQUARTERLY
   The domains mode for renewals (only valid for the zones com, net, org, info, biz, tv, mobi and me, optional): DEFAULT | AUTORENEW | AUTOEXPIRE | AUTODELETE | RENEWONCE | EXPIREAUCTION
   """
+  @spec set_domain_renewal_mode(String.t(), string_opt(), string_opt(), client_opt) :: return
   def set_domain_renewal_mode(
         domain,
         mode \\ "default",
         token \\ "",
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      [{"domain", domain}, {"renewalmode", mode}] ++
-        if token == "" do
-          []
-        else
-          [{"token", token}]
-        end
+      [domain: domain, renewalmode: mode] ++
+        if token == "", do: [], else: [token: token]
 
-    with {:ok, %{code: 200}} <- Client.query("SetDomainRenewalMode", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("SetDomainRenewalMode", params, client) do
       :ok
     end
   end
@@ -629,21 +676,18 @@ defmodule RRPproxy do
 
   The domains mode for transfers: DEFAULT|AUTOAPPROVE|AUTODENY
   """
+  @spec set_domain_transfer_mode(String.t(), string_opt(), string_opt(), client_opt) :: return
   def set_domain_transfer_mode(
         domain,
         mode \\ "default",
         token \\ "",
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      [{"domain", domain}, {"transfermode", mode}] ++
-        if token == "" do
-          []
-        else
-          [{"token", token}]
-        end
+      [domain: domain, transfermode: mode] ++
+        if token == "", do: [], else: [token: token]
 
-    with {:ok, %{code: 200}} <- Client.query("SetDomainTransferMode", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("SetDomainTransferMode", params, client) do
       :ok
     end
   end
@@ -652,10 +696,11 @@ defmodule RRPproxy do
   restore_domain restores a registered domain.
 
   """
-  def restore_domain(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec restore_domain(String.t(), client_opt) :: return
+  def restore_domain(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    with {:ok, %{code: 200}} <- Client.query("RestoreDomain", params, creds) do
+    with {:ok, %{code: 200}} <- Connection.call("RestoreDomain", params, client) do
       :ok
     end
   end
@@ -664,10 +709,12 @@ defmodule RRPproxy do
   status_owner_change explicity checks the status of an OwnerChange in detail.
 
   """
-  def status_owner_change(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec status_owner_change(String.t(), client_opt) :: return
+  def status_owner_change(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusOwnerChange", params, creds) do
+    with {:ok, %{code: 200, data: [data]}} <-
+           Connection.call("StatusOwnerChange", params, client) do
       {:ok, data}
     end
   end
@@ -676,10 +723,11 @@ defmodule RRPproxy do
   get_zone returns the correct zone for the given domainname.
 
   """
-  def get_zone(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec get_zone(String.t(), client_opt) :: return
+  def get_zone(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZone", params, creds) do
+    with {:ok, %{code: 200, data: [data]}} <- Connection.call("GetZone", params, client) do
       {:ok, data.zone}
     end
   end
@@ -688,10 +736,12 @@ defmodule RRPproxy do
   get_zone_info returns zone information for the given zone.
 
   """
-  def get_zone_info(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec get_zone_info(String.t(), client_opt) :: return
+  def get_zone_info(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("GetZoneInfo", params, creds, true) do
+    with {:ok, %{code: 200, data: [data]}} <-
+           Connection.call("GetZoneInfo", params, client, true) do
       {:ok, data}
     end
   end
@@ -702,6 +752,18 @@ defmodule RRPproxy do
   transfer_domain transfers a foreign domain into our account.
 
   """
+  @spec transfer_domain(
+          String.t(),
+          string_opt(),
+          string_opt(),
+          string_opt(),
+          string_opt(),
+          string_opt(),
+          string_opt(),
+          [String.t()] | nil,
+          keyword() | nil,
+          client_opt
+        ) :: return
   def transfer_domain(
         domain,
         action \\ "request",
@@ -712,19 +774,24 @@ defmodule RRPproxy do
         bill \\ "",
         nameservers \\ [],
         opts \\ [],
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
     params =
-      [{"domain", domain}, {"action", action}] ++
-        opts ++
-        if(auth == "", do: [], else: [{"auth", auth}]) ++
-        if(owner == "", do: [], else: [{"ownercontact0", owner}]) ++
-        if(admin == "", do: [], else: [{"admincontact0", admin}]) ++
-        if(tech == "", do: [], else: [{"techcontact0", tech}]) ++
-        if(bill == "", do: [], else: [{"billingcontact0", bill}]) ++
-        Enum.map(Enum.with_index(nameservers), fn {ns, i} -> {"nameserver#{i}", ns} end)
+      nameservers
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {ns, i} -> [{String.to_existing_atom("nameserver#{i}"), ns}] end)
 
-    with {:ok, %{code: 200}} <- Client.query("TransferDomain", params, creds) do
+    params =
+      params ++
+        [domain: domain, action: action] ++
+        opts ++
+        if(auth == "", do: [], else: [auth: auth]) ++
+        if(owner == "", do: [], else: [ownercontact0: owner]) ++
+        if(admin == "", do: [], else: [admincontact0: admin]) ++
+        if(tech == "", do: [], else: [techcontact0: tech]) ++
+        if(bill == "", do: [], else: [billingcontact0: bill])
+
+    with {:ok, %{code: 200}} <- Connection.call("TransferDomain", params, client) do
       :ok
     end
   end
@@ -733,11 +800,12 @@ defmodule RRPproxy do
   query_transfer_list returns a list of local transfers.
 
   """
-  def query_transfer_list(offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_transfer_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_transfer_list(offset \\ 0, limit \\ 2000, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
-           Client.query("QueryTransferList", params, creds) do
+           Connection.call("QueryTransferList", params, client) do
       {:ok, data, info}
     end
   end
@@ -746,15 +814,16 @@ defmodule RRPproxy do
   query_foreign_transfer_list returns a list of foreign transfers.
 
   """
+  @spec query_foreign_transfer_list(integer_opt(), integer_opt(), client_opt) :: return
   def query_foreign_transfer_list(
         offset \\ 0,
         limit \\ 2000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"first", offset}, {"limit", limit}]
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
-           Client.query("QueryForeignTransferList", params, creds) do
+           Connection.call("QueryForeignTransferList", params, client) do
       {:ok, data, info}
     end
   end
@@ -764,10 +833,12 @@ defmodule RRPproxy do
   You can check if the transfer was successfully initiated or who received the eMail to confirm a transfer.
 
   """
-  def status_domain_transfer(domain, %Client{} = creds \\ default_client()) do
-    params = [{"domain", domain}]
+  @spec status_domain_transfer(String.t(), client_opt) :: return
+  def status_domain_transfer(domain, client \\ Client.new()) do
+    params = [domain: domain]
 
-    with {:ok, %{code: 200, data: [data]}} <- Client.query("StatusDomainTransfer", params, creds) do
+    with {:ok, %{code: 200, data: [data]}} <-
+           Connection.call("StatusDomainTransfer", params, client) do
       {:ok, data}
     end
   end
@@ -778,11 +849,12 @@ defmodule RRPproxy do
   query_zone_list returns the prices per zone.
 
   """
-  def query_zone_list(offset \\ 0, limit \\ 2000, %Client{} = creds \\ default_client()) do
-    params = [{"first", offset}, {"limit", limit}]
+  @spec query_zone_list(integer_opt(), integer_opt(), client_opt) :: return
+  def query_zone_list(offset \\ 0, limit \\ 2000, client \\ Client.new()) do
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: prices, info: info}} <-
-           Client.query("QueryZoneList", params, creds) do
+           Connection.call("QueryZoneList", params, client) do
       {:ok, prices, info}
     end
   end
@@ -791,16 +863,17 @@ defmodule RRPproxy do
   query_accounting_list returns all items for accounting since the given date.
 
   """
+  @spec query_accounting_list(String.t(), integer_opt(), integer_opt(), client_opt) :: return
   def query_accounting_list(
         date,
         offset \\ 0,
         limit \\ 2000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"mindate", date}, {"first", offset}, {"limit", limit}]
+    params = [mindate: date, first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
-           Client.query("QueryAccountingList", params, creds) do
+           Connection.call("QueryAccountingList", params, client) do
       {:ok, data, info}
     end
   end
@@ -809,15 +882,16 @@ defmodule RRPproxy do
   query_upcoming_accounting_list returns all items that are upcoming for accounting.
 
   """
+  @spec query_upcoming_accounting_list(integer_opt(), integer_opt(), client_opt) :: return
   def query_upcoming_accounting_list(
         offset \\ 0,
         limit \\ 2000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"first", offset}, {"limit", limit}]
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
-           Client.query("QueryUpcomingAccountingList", params, creds) do
+           Connection.call("QueryUpcomingAccountingList", params, client) do
       {:ok, data, info}
     end
   end
@@ -826,10 +900,12 @@ defmodule RRPproxy do
   convert_currency converts the currency according to their current rates.
 
   """
-  def convert_currency(amount, from, to \\ "EUR", %Client{} = creds \\ default_client()) do
-    params = [{"amount", amount}, {"from", from}, {:to, to}]
+  @spec convert_currency(any(), String.t(), string_opt(), client_opt) :: return
+  def convert_currency(amount, from, to \\ "EUR", client \\ Client.new()) do
+    params = [amount: amount, from: from, to: to]
 
-    with {:ok, %{code: 200, data: [conv]}} <- Client.query("ConvertCurrency", params, creds) do
+    with {:ok, %{code: 200, data: [conv]}} <-
+           Connection.call("ConvertCurrency", params, client) do
       {:ok, conv.converted_amount, conv.rate}
     end
   end
@@ -838,15 +914,16 @@ defmodule RRPproxy do
   query_available_promotion_list returns all available promotions.
 
   """
+  @spec query_available_promotion_list(integer_opt(), integer_opt(), client_opt) :: return
   def query_available_promotion_list(
         offset \\ 0,
         limit \\ 2000,
-        %Client{} = creds \\ default_client()
+        client \\ Client.new()
       ) do
-    params = [{"first", offset}, {"limit", limit}]
+    params = [first: offset, limit: limit]
 
     with {:ok, %{code: 200, data: data, info: info}} <-
-           Client.query("QueryAvailablePromotionList", params, creds) do
+           Connection.call("QueryAvailablePromotionList", params, client) do
       {:ok, data, info}
     end
   end

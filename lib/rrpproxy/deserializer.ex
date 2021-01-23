@@ -1,13 +1,9 @@
-defmodule RRPproxy.Client do
+defmodule RRPproxy.Deserializer do
   @moduledoc """
-  This client takes care of communication with the RRPproxy.net API.
+  Documentation for `RRPproxy.Deserializer` which provides deserialization helpers.
+
+  **It is used for low-level communication and should not be used directly by users of this library.**
   """
-
-  use HTTPoison.Base
-  require Logger
-
-  defstruct username: "", password: "", ote: true
-
   @multi_line_fields [
     " procedure",
     " policy",
@@ -15,13 +11,6 @@ defmodule RRPproxy.Client do
     "restrictions",
     "tag"
   ]
-
-  defp make_url(ote),
-    do:
-      if(ote,
-        do: "https://api-ote.rrpproxy.net/api/call",
-        else: "https://api.rrpproxy.net/api/call"
-      )
 
   defp to_value(value) do
     String.to_integer(value)
@@ -118,37 +107,29 @@ defmodule RRPproxy.Client do
 
   defp case_parts(main, _, _, _, _), do: main
 
-  defp response_to_map(
-         {:error, %HTTPoison.Error{id: _, reason: reason}},
-         _is_multi_line_response,
-         _is_single_result
-       ) do
-    {:error, reason}
-  end
-
-  defp response_to_map(
-         {:ok, %{status_code: 500}} = {_, %HTTPoison.Response{}},
-         _is_multi_line_response,
-         _is_single_result
-       ) do
-    {:error, %{code: 500}}
-  end
-
-  defp response_to_map(
-         {code, %{body: body}} = {_, %HTTPoison.Response{}},
-         is_multi_line_response,
-         is_single_result
-       ) do
+  @doc "Transforms a Tesla results into a map structure."
+  @spec to_map({:ok, Tesla.Env.t()} | {:error, any()}, boolean(), boolean()) ::
+          {:ok, map()} | {:error, any()}
+  def to_map(
+        {:ok, %Tesla.Env{status: status, body: body}},
+        is_multi_line_response,
+        is_single_result
+      ) do
     String.split(body, "\n")
     |> Enum.filter(&String.contains?(&1, "="))
     |> Enum.map(&Regex.split(~r/\s*=\s*/, &1, parts: 2))
     |> List.pop_at(0)
-    |> work_parts(code, is_multi_line_response, is_single_result)
+    |> work_parts(status, is_multi_line_response, is_single_result)
   end
+
+  def to_map({:ok, %Tesla.Env{status: status}}, _, _),
+    do: {:error, %{code: status}}
+
+  def to_map({:error, _} = error, _, _), do: error
 
   defp work_parts({nil, []}, _, _, _), do: {:error, :bad_response}
 
-  defp work_parts({[_, rcode], parts}, code, is_multi_line_response, is_single_result) do
+  defp work_parts({[_, rcode], parts}, status, is_multi_line_response, is_single_result) do
     {[_, rdesc], parts} = List.pop_at(parts, 0)
 
     {data, info, extra} =
@@ -174,69 +155,12 @@ defmodule RRPproxy.Client do
       end
 
     rcode = String.to_integer(rcode)
-    code = if code == :ok and rcode >= 300, do: :error, else: :ok
+
+    code =
+      if status >= 300 or rcode >= 300,
+        do: :error,
+        else: :ok
 
     {code, %{code: rcode, description: rdesc, data: data, info: info}}
-  end
-
-  def query(
-        command,
-        custom_params \\ [],
-        creds = %__MODULE__{} \\ %__MODULE__{},
-        is_multi_line_response \\ false,
-        is_single_result \\ false
-      ) do
-    query_tries(creds, command, custom_params, is_multi_line_response, is_single_result)
-  end
-
-  defp query_tries(
-         creds,
-         command,
-         custom_params,
-         is_multi_line_response,
-         is_single_result,
-         tries \\ 1
-       ) do
-    url = make_url(creds.ote)
-
-    request_params =
-      [{"s_login", creds.username}, {"s_pw", creds.password}, {"command", command}] ++
-        custom_params
-
-    retry_func = fn error ->
-      if tries > 3 do
-        # return the error as is
-        error
-      else
-        Logger.debug(
-          "[RRPproxy] retrying #{command} #{Kernel.inspect(custom_params)}, try: #{tries}"
-        )
-
-        :timer.sleep(:timer.seconds(tries * 5))
-
-        query_tries(
-          creds,
-          command,
-          custom_params,
-          is_multi_line_response,
-          is_single_result,
-          tries + 1
-        )
-      end
-    end
-
-    case response_to_map(
-           get(url, [], params: request_params),
-           is_multi_line_response,
-           is_single_result
-         ) do
-      {:error, :bad_response} = error -> retry_func.(error)
-      {:error, :closed} = error -> retry_func.(error)
-      {:error, :timeout} = error -> retry_func.(error)
-      {:error, %{code: 421}} = error -> retry_func.(error)
-      {:error, %{code: 423}} = error -> retry_func.(error)
-      {:error, %{code: 500}} = error -> retry_func.(error)
-      other -> other
-    end
   end
 end

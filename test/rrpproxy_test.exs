@@ -1,20 +1,18 @@
 defmodule RRPproxyTest do
   use ExUnit.Case
-  doctest RRPproxy
+  # doctest RRPproxy
 
   # account
 
   test "status account" do
-    assert {:ok, status} = RRPproxy.status_account()
-    assert is_map(status)
+    assert {:ok, %{} = status} = RRPproxy.status_account()
     assert status.currency == "USD"
   end
 
   test "status registrar and modifying registrar" do
-    assert RRPproxy.modify_registrar(%{whois: "james and the bandits", language: "EN"}) == :ok
+    assert RRPproxy.modify_registrar(whois: "james and the bandits", language: "EN") == :ok
 
-    assert {:ok, status} = RRPproxy.status_registrar()
-    assert is_map(status)
+    assert {:ok, %{} = status} = RRPproxy.status_registrar()
     assert status.language == "EN"
     assert status.whois == "james and the bandits"
   end
@@ -24,9 +22,7 @@ defmodule RRPproxyTest do
     assert is_list(list)
     assert Enum.count(list) > 100
 
-    inactive_appendix = Enum.find(list, fn appendix -> appendix.active == false end)
-    assert is_map(inactive_appendix)
-
+    # %{} = inactive_appendix = Enum.find(list, fn appendix -> appendix.active == false end)
     # sadly i already have all appendices active thanks to this
     # assert {:ok, _} = RRPproxy.activate_appendix(inactive_appendix.appendix)
   end
@@ -63,7 +59,7 @@ defmodule RRPproxyTest do
 
   # contacts
 
-  @contact %{
+  @contact [
     firstname: "Max",
     lastname: "Mustermann",
     street0: "Ludwigstrasse 5",
@@ -72,31 +68,24 @@ defmodule RRPproxyTest do
     country: "DE",
     phone: "+4991112345",
     email: "foo@bar.org"
-  }
+  ]
   test "lifecycle of a people contact" do
-    assert {:ok, contact} = RRPproxy.add_contact(@contact)
-    assert is_map(contact)
+    assert {:ok, %{} = contact} = RRPproxy.add_contact(@contact)
     assert String.length(contact.roid) > 0
 
     assert {:ok, list, _} = RRPproxy.query_contact_list(0, 2000)
     assert is_list(list)
     assert Enum.any?(list, fn x -> x == contact.contact end)
 
-    assert {:ok, status_contact} = RRPproxy.status_contact(contact.contact)
-    assert is_map(status_contact)
+    assert {:ok, %{} = status_contact} = RRPproxy.status_contact(contact.contact)
     assert String.length(status_contact.roid) > 0
 
-    update_attrs =
-      @contact
-      |> Map.put(:street0, "Ludwigstrasse 6")
-      |> Map.put(:contact, contact.contact)
+    update_attrs = @contact ++ [street0: "Ludwigstrasse 6", contact: contact.contact]
 
-    assert {:ok, updated_contact} = RRPproxy.modify_contact(update_attrs)
-    assert is_map(updated_contact)
+    assert {:ok, %{} = updated_contact} = RRPproxy.modify_contact(update_attrs)
     assert updated_contact.validated == true
 
-    assert {:ok, cloned_contact} = RRPproxy.clone_contact(contact.contact)
-    assert is_map(cloned_contact)
+    assert {:ok, %{} = cloned_contact} = RRPproxy.clone_contact(contact.contact)
 
     assert RRPproxy.delete_contact(contact.contact) == :ok
     assert RRPproxy.restore_contact(contact.contact) == :ok
@@ -104,7 +93,7 @@ defmodule RRPproxyTest do
     assert RRPproxy.delete_contact(contact.contact) == :ok
   end
 
-  @contact %{
+  @contact [
     organization: "ACME inc",
     street0: "Ludwigstrasse 1",
     city: "Nürnberg",
@@ -112,31 +101,24 @@ defmodule RRPproxyTest do
     country: "DE",
     phone: "+49911234541",
     email: "acme@foo.org"
-  }
+  ]
   test "lifecycle of an org contact" do
-    assert {:ok, contact} = RRPproxy.add_contact(@contact)
-    assert is_map(contact)
+    assert {:ok, %{} = contact} = RRPproxy.add_contact(@contact)
     assert String.length(contact.roid) > 0
 
     assert {:ok, list, _} = RRPproxy.query_contact_list()
     assert is_list(list)
     assert Enum.any?(list, fn x -> x == contact.contact end)
 
-    assert {:ok, status_contact} = RRPproxy.status_contact(contact.contact)
-    assert is_map(status_contact)
+    assert {:ok, %{} = status_contact} = RRPproxy.status_contact(contact.contact)
     assert String.length(status_contact.roid) > 0
 
-    update_attrs =
-      @contact
-      |> Map.put(:street0, "Ludwigstrasse 2")
-      |> Map.put(:contact, contact.contact)
+    update_attrs = @contact ++ [street0: "Ludwigstrasse 2", contact: contact.contact]
 
-    assert {:ok, updated_contact} = RRPproxy.modify_contact(update_attrs)
-    assert is_map(updated_contact)
+    assert {:ok, %{} = updated_contact} = RRPproxy.modify_contact(update_attrs)
     assert updated_contact.validated == true
 
-    assert {:ok, cloned_contact} = RRPproxy.clone_contact(contact.contact)
-    assert is_map(cloned_contact)
+    assert {:ok, %{} = cloned_contact} = RRPproxy.clone_contact(contact.contact)
 
     assert RRPproxy.delete_contact(contact.contact) == :ok
     assert RRPproxy.restore_contact(contact.contact) == :ok
@@ -146,7 +128,7 @@ defmodule RRPproxyTest do
 
   # lifecycle of a nameserver
 
-  @contact %{
+  @contact [
     firstname: "John Paul",
     lastname: "Jones",
     street0: "Ludwigstrasse 5",
@@ -155,7 +137,7 @@ defmodule RRPproxyTest do
     country: "DE",
     phone: "+4991112346",
     email: "foo2@bar.org"
-  }
+  ]
   test "lifecycle of a nameserver" do
     assert {:ok, contact} = RRPproxy.add_contact(@contact)
 
@@ -183,7 +165,7 @@ defmodule RRPproxyTest do
 
   # domains
 
-  @contact %{
+  @contact [
     firstname: "John Paul",
     lastname: "Jones",
     street0: "Ludwigstrasse 5",
@@ -192,7 +174,7 @@ defmodule RRPproxyTest do
     country: "DE",
     phone: "+4991112346",
     email: "foo2@bar.org"
-  }
+  ]
   test "lifecycle of a domain" do
     assert {:ok, contact} = RRPproxy.add_contact(@contact)
     handle = contact.contact
