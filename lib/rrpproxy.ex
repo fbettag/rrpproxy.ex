@@ -17,7 +17,7 @@ defmodule RRPproxy do
   ## Configuration
 
   Put the following lines into your `config.exs` or better, into your environment
-  configuration files like `test.exs`, `dev.exs` or `prod.exs.`.
+  configuration files like `test.exs`, `dev.exs` or `prod.exs`.
 
   ```elixir
   config :rrpproxy,
